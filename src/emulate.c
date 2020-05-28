@@ -3,55 +3,45 @@
 #include <assert.h>
 
 
-char *readFile(char *filename) {
-  char *objectCode = calloc(65536, sizeof(char)); //Creates a pointer with allocated space of 64KB
+int *readFile(char *filename) {
+  int *objectCode = calloc(16384, sizeof(int)); //Creates a pointer with allocated space of 64KB
+  int i = 0;
   
   FILE *ptr = fopen(filename, "rb"); //Opens file "filename" to be read as a binary file
   assert(ptr != NULL); //Checks the file has been read
   
-  fread(objectCode, 4, 16384, ptr); //Stores the binary data in the files into the array objectCode
+  while (!feof(ptr)) {
+    fread((objectCode + i), 4, 1, ptr); //Stores the binary data in the files into the array
+    i++;
+  }
   
   fclose(ptr); //Closes file "filename"
   
   return objectCode;
 }
 
-char *fetch(char *objectcode, int programCounter) {
-  char instruction[32];
-  
-  for (int i = 0; i < 32; i++) {
-    instruction[i] = *(objectcode + (32 * programCounter));
-  }
-  
-  char *result = instruction;
-  
-  return result;
+int fetch(int *objectcode, int programCounter) {
+  return objectcode[programCounter];
 }
 
-void initialiseRegisters(char **registers) {
+void initialiseRegisters(int *registers) {
   for (int i = 0; i < 17; i++) {
-    for (int j = 0; j < 32; j++) {
-      registers[i][j] = '0';
-    }
+      registers[i] = 0;
   }
 }
 
 int main(int argc, char **argv) {
   
-  char **registers = calloc(17, 32 * sizeof(char));
-  char *objectcode;
+  int registers[17];
+  int *objectcode;
   
   assert(argc == 2);
   
+  initialiseRegisters(&registers[0]);
   objectcode = readFile(argv[1]);
   
-  printf("%s\n", fetch(objectcode, 0));
-  
-  for (int i = 0; i < 17; i++) {
-    free(registers[i]);
-  }
-  
-  free(registers);
+  printf("%d\n", fetch(objectcode, 0));
+
   free(objectcode);
   
   return EXIT_SUCCESS;
