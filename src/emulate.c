@@ -21,13 +21,30 @@ int *readFile(char *filename) {
 }
 
 int fetch(int *objectcode, int programCounter) {
-  return objectcode[programCounter];
+  return objectcode[programCounter]; //Fetches one instruction from the objectcode
 }
 
 void initialiseRegisters(int *registers) {
   for (int i = 0; i < 17; i++) {
-      registers[i] = 0;
+      registers[i] = 0;  //Initialises all registers to 0
   }
+}
+
+void decode(int instruction, int *registers) {
+  int cond = instruction & (-268435456);
+  bool dataProcessing = (instruction & 201326592 == 201326952);
+  if (cond == -536870912) {  //if the condition part of instruction is always
+    if (dataProcessing) {
+      dataProcess(instruction, registers);
+    }
+  }
+}
+
+void dataProcess(int instruction, int *registers) {
+  int opcode = instruction & (31457280);
+  int registern = instruction & (983040);
+  int registerd = instruction & (61440);
+  int operand2 = instruction & (4095);
 }
 
 int main(int argc, char **argv) {
@@ -41,6 +58,9 @@ int main(int argc, char **argv) {
   objectcode = readFile(argv[1]);
   
   printf("%d\n", fetch(objectcode, 0));
+  printf("%d\n", fetch(objectcode, 1));
+  
+  decode(fetch(objectcode, 0), &registers[0]);
 
   free(objectcode);
   
