@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
-
+#include <math.h>
 
 int *readFile(char *filename) {
   int *objectCode = calloc(16384, sizeof(int)); //Creates a pointer with allocated space of 64KB
@@ -29,19 +29,31 @@ void initialiseRegisters(int *registers) {
     }
 }
 
-/*void decode(int instruction, int programcounter) { //Decode started but not working yet
+void decode(int instruction, int programcounter) { //Decode started but not working yet
   enum instrSet{dataProcess, mul, singleData, branch};
   enum instrSet instrType;
-  if ((2^27 + 2^26) & instruction == 0) {
+  int bit26and27 = 134217728 + 67108864;
+  
+  if ((bit26and27 & instruction) == 0) {
     instrType = dataProcess;
+  } else if ((bit26and27 & instruction) == 67108864) {
+    instrType = singleData;
+  } else if ((bit26and27 & instruction) == 134217728) {
+    instrType = branch;
   }
   
-  switch (instrType) {
+  
+  /*switch (instrType) {
     case dataProcess:
       decodeDataProcess(instruction, programcounter);
     break;
-  }
-}/*
+  }*/
+}
+
+void decodeBranch(int instruction, int pc) {
+  int cond = (instruction & -268435456) / 26843546; 
+  printf("%d\n", cond);
+}
 
 /*void decodeDataProcess(int instruction, int pc, char* decodedData) {
   int opcode = ((2^24 + 2^23 + 2^22 + 2^21) & instruction) / (2^21)
@@ -72,17 +84,20 @@ void initialiseRegisters(int *registers) {
 
 void startCycle(int *objectcode, int *registers) {
   int pc = registers[15]; //pc takes the value of the program counter
+  int fetchedInstr = NULL;
+  char *decodedInstr = NULL;
   if (pc == 0) {
-    fetch(objectcode, pc);
+    fetchedInstr = fetch(objectcode, pc);
     pc = pc + 4;
   } else if (pc == 4) {
-    fetch(objectcode, pc/4);
     decode(objectcode, (pc/4 - 1));
+    fetch(objectcode, pc/4);
     pc = pc + 4;
   } else {
+    //execute(objectcode, (pc/4 - 2));
+    decode(objectcode, (pc/4 - 1));
     fetch(objectcode, pc/4);
     decode(objectcode, (pc/4 - 1));
-    execute(objectcode, (pc/4 - 2));
     pc = pc + 4;
   }
 }
