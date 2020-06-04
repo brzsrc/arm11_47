@@ -197,23 +197,22 @@ unsigned int shift_carry_out(decoded_dp *decodedDp, decoded *decodedInstr, armst
 }
 
 void decode_data_processing(decoded *decodedInstr, decoded_dp *decodedDp, armstate *state){
-    unsigned int immediate, amount, iw, operand2;
+    unsigned int immediate, iw, operand2;
     iw = decodedInstr -> bit0to25;
     decodedDp -> type = decodedInstr -> type;
     decodedDp -> rd = (iw >> 12) & 0xF;
     decodedDp -> rn = (iw >> 16) & 0xF;
     decodedDp -> s_bit = (iw >> 20) & 0b1;
-    immediate = iw & 0b1;
+    immediate = (iw >> 25) & 0b1;
 
 
     if(immediate == 1){
-        amount = (iw >> 8) & 0xF;
-        operand2 = (iw & 0xFF); // 32-bit
-        operand2 = operand2 >> (amount) || (operand2 & amount) << (32 - amount);
+        operand2 = iw & 0xfff;
     } else{
         val_reg_last12bits(decodedInstr, &operand2, state);
     }
-    decodedDp -> operand2 = operand2;
+    decodedDp -> operand2 = operand2; 
+    printf("operand2: %d\n", operand2);
 }
 
 
