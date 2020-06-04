@@ -27,7 +27,7 @@ typedef struct arm_state {
     int n, z, c, v;
 } armstate;
 
-void armstate_init(armstate *state, unsigned int *objectCode) {
+void armstate_init(armstate *state) {
     /* zero out all arm state */
     state->n = 0;
     state->z = 0;
@@ -38,7 +38,7 @@ void armstate_init(armstate *state, unsigned int *objectCode) {
         state->regs[i] = 0;
     }
 
-    state -> memory = objectCode;
+    state->memory = calloc(STACK_SIZE, sizeof(int));
 }
 
 char *printenum(type t) { //Testing
@@ -114,7 +114,7 @@ void findOpcode(decoded *decodedInstr, unsigned int instruction) {
 
 // next_instruction_condition_check
 int do_next_instruction(decoded *decodedInstr, armstate *state){
-    unsigned int cond = decodedInstr -> condition;
+    unsigned int cond = decodedInstr->condition;
     int run_command;
     if ((cond == 0) && (state->z == 1 )) { // cond in decimal?
         run_command = 1;
@@ -320,6 +320,7 @@ void add_instr(decoded *decodedInstr, armstate *state){
             state -> z = 0;
         }
     }
+    free(decodedDp);
 }
 
 void tst_instr(decoded *decodedInstr, armstate *state){
@@ -341,6 +342,7 @@ void tst_instr(decoded *decodedInstr, armstate *state){
             state -> z = 0;
         }
     }
+    free(decodedDp);
 }
 
 void teq_instr(decoded *decodedInstr, armstate *state){
@@ -358,6 +360,7 @@ void teq_instr(decoded *decodedInstr, armstate *state){
             state -> z = 0;
         }
     }
+    free(decodedDp);
 }
 
 void cmp_instr(decoded *decodedInstr, armstate *state){
@@ -379,6 +382,7 @@ void cmp_instr(decoded *decodedInstr, armstate *state){
             state -> z = 0;
         }
     }
+    free(decodedDp);
 }
 
 void orr_instr(decoded *decodedInstr, armstate *state){
@@ -423,7 +427,8 @@ void single_data_transfer_instr(decoded *decodedInstr, armstate *state){
 
     unsigned int iw, immediate, offset, p_index, up_bit, load_bit, rn, rd;
     unsigned int data;
-    iw = decodedInstr -> bit0to25;
+    
+    iw = decodedInstr->bit0to25;
     immediate = (iw >> 25) & 0b1;//0 - 24 bits 没了(第二十五位
     p_index = (iw >> 24) & 0b1;
     up_bit = (iw >> 23) & 0b1;
@@ -438,26 +443,31 @@ void single_data_transfer_instr(decoded *decodedInstr, armstate *state){
         // Operand2 is a register, return the value of offset / op2
         val_reg_last12bits(decodedInstr, &offset, state);
     }
-
-    if(load_bit == 1) {
-        data = state->memory[rn];
-        state->regs[rn] = data;
-    }
-
+    
     if(p_index == 1){
         if(up_bit == 1){
-            state -> regs[rn] += offset;
+            data = offset + state->regs[rn];
         } else{
-            state -> regs[rn] -= offset;
+            data = state->regs[rn] - offset;
         }
-        state -> regs[rd] = state -> regs[rn];
     } else{
-        state -> regs[rd] = state -> regs[rn];
         if(up_bit == 1){
-            state -> regs[rn] += offset;
+        	data = state->regs[rn];
+            state->regs[rn] += offset;
         } else{
-            state -> regs[rn] -= offset;
+        	data = state->regs[rn];
+            state->regs[rn] -= offset;
         }
+    }
+    
+    if(load_bit == 1) {
+    	char *byteMem = (char *) state->memory;
+    	int *memAdd = (int *)(byteMem + data);
+        state->regs[rd] = *memAdd;
+    } else {
+        /*char *byteMem = state->memory;
+    	int *memAdd = byteMem + data;
+        *memAdd = state->regs[rd];*/
     }
 }
 
@@ -466,10 +476,10 @@ void multiply_instr(decoded *decodedInstr, armstate *state){
     iw = decodedInstr -> bit0to25;;
     acc = (iw >> 21) & 0b1;
     set = (iw >> 20) & 0b1;
-    rd = (iw >> 16) & 0xF;
-    rn = (iw >> 12) & 0xF;
-    rs = (iw >> 8) & 0xF;
-    rm = iw & 0xF;
+    rd = (iw >> 16) & 0xf;
+    rn = (iw >> 12) & 0xf;
+    rs = (iw >> 8) & 0xf;
+    rm = iw & 0xf;
 
     if(acc == 1){
         state -> regs[rd] = state -> regs[rm] * state -> regs[rs] + state -> regs[rn];
@@ -492,11 +502,15 @@ void multiply_instr(decoded *decodedInstr, armstate *state){
 //not sure about branch execution///////////////
 void branch_instr(decoded *decodedInstr, armstate *state){
     signed int offset;
-    unsigned int iw = decodedInstr -> bit0to25;
+    unsigned int iw = decodedInstr->bit0to25;
 
     // shifted left 2 bits, sign extended to 32 bits??????????????
-    offset = ((signed) (iw & 0xFFFFFF)) << 2;
-    state -> regs[PC] += offset;
+    offset = (iw & 0x00ffffff) << 2;
+    int sign = (iw >> 23) & 0b1;
+    if (sign == 1) {
+      offset = offset | 0xff000000;
+    }
+    state->regs[PC] += offset;
 }
 
 
@@ -506,17 +520,21 @@ unsigned int fetch(unsigned int *objectcode, unsigned int programCounter) {
 
 void decode(unsigned int instruction, decoded *decodedInstr) {
     unsigned int bit26and27 = (instruction >> 26) & 0b11;
-
     decodedInstr->condition = (instruction >> 28) & 0xf;
     decodedInstr->bit0to25 = (instruction) & 0x3ffffff;
 
     if (bit26and27 == 0) {
-        findOpcode(decodedInstr, instruction);
+        if (((instruction >> 22) & 0xf) == 0 && ((instruction >> 4) & 0xf) == 9) {
+        	decodedInstr->type = multiply;
+        } else {
+        	findOpcode(decodedInstr, instruction);
+        }
     } else if (bit26and27 == 1) {
         decodedInstr->type = singledata;
     } else if (bit26and27 == 2) {
         decodedInstr->type = branch;
     }
+    
 }
 
 void execute(decoded *decodedInstr, armstate *state){
@@ -566,11 +584,35 @@ void execute(decoded *decodedInstr, armstate *state){
         state->regs[PC] += 4;
 }
 
-void startCycle(unsigned int *objectcode, armstate *state) {
+void bigToLittleEndian(armstate *state) {
+	int temp;
+	for (int i = 0; i < NREGS - 2; i++) {
+		temp = state->regs[i];
+		state->regs[i] = (temp & 0xff) << 24 | (temp & 0xff00) << 8 | (temp & 0xff0000) >> 8 |	(temp & 0xff000000) >> 24;
+	}
+	for (int j = 0; j < STACK_SIZE; j++) {
+		temp = state->memory[j];
+		state->memory[j] = (temp & 0xff) << 24 | (temp & 0xff00) << 8 | (temp & 0xff0000) >> 8 |	(temp & 0xff000000) >> 24;
+	}
+}
+
+void printResult(armstate *state) {
+
+  printf("Registers:\n");
+  for (int i = 0; i < 13; i++) {
+  	printf("$%d  : %d (%x)\n", i, state->regs[i], state->regs[i]);
+  }
+  printf("PC  : %d (%x)\n", state->regs[PC], state->regs[PC]);
+  printf("CPSR  : %d (%x)\n", state->regs[16], state->regs[16]);
+  printf("Non-zero memory:\n");
+}
+
+void startCycle(armstate *state) {
     unsigned int *pc = &(state->regs[PC]); //pc takes the value of the program counter
     unsigned int fetched;
     decoded *decodedInstr = (decoded *) calloc(1, sizeof(decoded));
     bool finished = false;
+    unsigned int *objectcode = state->memory;
 
   while(!finished) {
       if (*pc == 0) {
@@ -582,6 +624,10 @@ void startCycle(unsigned int *objectcode, armstate *state) {
           *pc = *pc + 4;
       } else {
         execute(decodedInstr, state);
+        if (decodedInstr->type == branch && do_next_instruction(decodedInstr, state)) {
+          fetched = fetch(objectcode, *pc/4);
+          *pc += 4;
+        }
         decode(fetched, decodedInstr);
         fetched = fetch(objectcode, *pc/4);
         *pc = *pc + 4;
@@ -590,46 +636,43 @@ void startCycle(unsigned int *objectcode, armstate *state) {
         }
       }
       
-        printf("fetched instruction: %d\n", fetched);
-        printf("decoded type: %s\n", printenum(decodedInstr->type)); //Used for testing
-        for(int i = 0; i < NREGS; i++){
-            printf("register[%d]: %d\n", i, state -> regs[i]);
-        }
+      state->regs[16] = state->n << 31 | state->z << 30 | state->c << 29 | state->v << 28;
+      //printf("fetched instruction: %x\n", fetched);
+      //printf("decoded type: %s\n", printenum(decodedInstr->type)); //Used for testing
     }
-
+    
+    printResult(state);
+      
     free(decodedInstr);
 } //pipeline
 
-unsigned int *readFile(char *filename) {
-    unsigned int *objectCode = calloc(16384, sizeof(int));
+void readFile(char *filename, unsigned int *memory) {
     //Creates a pointer with allocated space of 64KB
     int i = 0;
     FILE *ptr = fopen(filename, "rb"); //Opens file "filename" to be read as a binary file
     assert(ptr != NULL); //Checks the file has been read
 
     while (!feof(ptr)) {
-        fread(objectCode + i, 4, 1, ptr);
+        fread(memory + i, 4, 1, ptr);
         //Stores the binary data in the files into the array objectCode
         i++;
     }
     fclose(ptr); //Closes file "filename"
-    return objectCode;
 } //loader
 
 int main(int argc, char **argv) {
 
-    unsigned int *objectcode = calloc(STACK_SIZE, sizeof(int));
     //unsigned int registers[NREGS];
     armstate *state = (armstate *) calloc(1, sizeof(armstate));
 
-    armstate_init(state, objectcode); // &??????????
+    armstate_init(state); // &??????????
 
     assert(argc == 2);
-    objectcode = readFile(argv[1]);
+    readFile(argv[1], state->memory);
 
-    startCycle(objectcode, state); //???????
+    startCycle(state); //???????
 
-    free(objectcode);
+    free(state->memory);
     free(state);
     return EXIT_SUCCESS;
 }
