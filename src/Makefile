@@ -1,15 +1,11 @@
 CC      = gcc
-CFLAGS  = -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
+CFLAGS  = -Wall -g -std=c99 -Werror -pedantic
+FILES = emulate.c fetch.c decode.c execute.c instrType.c
 
-.SUFFIXES: .c .o
+#.PHONY: all clean
 
-.PHONY: all clean
-
-all: assemble emulate
-
-assemble: assemble.o
-
-emulate: emulate.o
+all: emulate.o fetch.o execute.o decode.o instrType.o
+	$(CC) $(CFLAGS) $(FILES) -o emulate
 
 clean:
 	rm -f $(wildcard *.o)
