@@ -22,7 +22,7 @@ void bigToLittleEndian(armstate *state) {
 	}
 }
 
-void printResult(armstate *state) {
+void printResult(armstate *state, int numOfInstr) {
   printf("Registers:\n");
   for (int i = 0; i < 13; i++) {
   	printf("$%d  : %d (%x)\n", i, state->regs[i], state->regs[i]);
@@ -34,7 +34,7 @@ void printResult(armstate *state) {
 
 void startCycle(armstate *state) {
     unsigned int *pc = &(state->regs[PC]); //pc takes the value of the program counter
-    unsigned int fetched;
+    unsigned int fetched, counter = 0;
     decoded *decodedInstr = (decoded *) calloc(1, sizeof(decoded));
     bool finished = false;
     unsigned int *objectcode = state->memory;
@@ -61,9 +61,10 @@ void startCycle(armstate *state) {
         }
       }
       state->regs[16] = state->n << 31 | state->z << 30 | state->c << 29 | state->v << 28;
+      counter++;
     }
     
-    printResult(state);
+    printResult(state, counter);
       
     free(decodedInstr);
 } //pipeline

@@ -113,11 +113,11 @@ void decode_data_processing(decoded *decodedInstr, decoded_dp *decodedDp, armsta
         int carry;
         if (rotate != 0) {
         for (int i = 0; i < rotate; i++) {
-          carry = imm & 0x8000000;
+          carry = imm & 1;
           if (carry == 0) {
-            imm = imm << 1;
+            imm = imm >> 1 & 0x7fffffff;
           } else {
-            imm = (imm << 1) + 1;
+            imm = (imm >> 1) | 0x80000000;
           } 
         }
         }

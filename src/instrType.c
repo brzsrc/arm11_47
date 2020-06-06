@@ -112,7 +112,7 @@ void tst_instr(decoded *decodedInstr, armstate *state){
     decoded_dp *decodedDp = calloc(1, sizeof(decoded_dp));
 
     decode_data_processing(decodedInstr, decodedDp, state);
-    unsigned int res = decodedDp -> operand2 + state -> regs[decodedDp -> rn];
+    unsigned int res = decodedDp -> operand2 & state -> regs[decodedDp -> rn];
 
     if(decodedDp -> s_bit == 1){
         if(res <= 0xFFFFFFFF){
@@ -174,7 +174,7 @@ void orr_instr(decoded *decodedInstr, armstate *state){
     decoded_dp *decodedDp = calloc(1, sizeof(decoded_dp));
 
     decode_data_processing(decodedInstr, decodedDp, state);
-    unsigned int res = (state -> regs[decodedDp -> rn] || decodedDp -> operand2);
+    unsigned int res = (state -> regs[decodedDp -> rn] | decodedDp -> operand2);
     state -> regs[decodedDp -> rd] = res;
 
     if(decodedDp -> s_bit == 1){
@@ -250,9 +250,10 @@ void single_data_transfer_instr(decoded *decodedInstr, armstate *state){
     	int *memAdd = (int *)(byteMem + data);
         state->regs[rd] = *memAdd;
     } else {
-        char *byteMem = (char*) state->memory;
-    	char *memAdd = byteMem + data;
-        *memAdd = state->regs[rn];
+        /*char *byteMem = (char*) state->memory;
+    	char *memAdd;
+    	memAdd = byteMem + data;
+        *memAdd = state->regs[rn];*/
     }
 }
 
