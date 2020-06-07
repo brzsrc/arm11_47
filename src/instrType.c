@@ -1,8 +1,8 @@
 #include "execute.h"
 #include <stdlib.h>
+#include <stdio.h>
 
-void and_instr(decoded *decodedInstr, armstate *state){
-    decoded_dp *decodedDp = calloc(1, sizeof(decoded_dp));
+void and_instr(decoded *decodedInstr, armstate *state, decoded_dp *decodedDp){
 
     decode_data_processing(decodedInstr, decodedDp, state);
     unsigned int res = (state -> regs[decodedDp -> rn] & decodedDp -> operand2);
@@ -17,11 +17,9 @@ void and_instr(decoded *decodedInstr, armstate *state){
             state -> z = 0;
         }
     }
-    free(decodedDp);
 }
 
-void eor_instr(decoded *decodedInstr, armstate *state){
-    decoded_dp *decodedDp = calloc(1, sizeof(decoded_dp));
+void eor_instr(decoded *decodedInstr, armstate *state, decoded_dp *decodedDp){
 
     decode_data_processing(decodedInstr, decodedDp, state);
     unsigned int res = (state -> regs[decodedDp -> rn] ^ decodedDp -> operand2);
@@ -36,11 +34,9 @@ void eor_instr(decoded *decodedInstr, armstate *state){
             state -> z = 0;
         }
     }
-    free(decodedDp);
 }
 
-void sub_instr(decoded *decodedInstr, armstate *state){
-    decoded_dp *decodedDp = calloc(1, sizeof(decoded_dp));
+void sub_instr(decoded *decodedInstr, armstate *state, decoded_dp *decodedDp){
 
     decode_data_processing(decodedInstr, decodedDp, state);
     unsigned int res = (state -> regs[decodedDp -> rn] - decodedDp -> operand2);
@@ -59,11 +55,9 @@ void sub_instr(decoded *decodedInstr, armstate *state){
             state -> z = 0;
         }
     }
-    free(decodedDp);
 }
 
-void rsb_instr(decoded *decodedInstr, armstate *state){
-    decoded_dp *decodedDp = calloc(1, sizeof(decoded_dp));
+void rsb_instr(decoded *decodedInstr, armstate *state, decoded_dp *decodedDp){
 
     decode_data_processing(decodedInstr, decodedDp, state);
     unsigned int res = decodedDp -> operand2 - state -> regs[decodedDp -> rn];
@@ -82,11 +76,9 @@ void rsb_instr(decoded *decodedInstr, armstate *state){
             state -> z = 0;
         }
     }
-    free(decodedDp);
 }
 
-void add_instr(decoded *decodedInstr, armstate *state){
-    decoded_dp *decodedDp = calloc(1, sizeof(decoded_dp));
+void add_instr(decoded *decodedInstr, armstate *state, decoded_dp *decodedDp){
 
     decode_data_processing(decodedInstr, decodedDp, state);
     unsigned int res = decodedDp -> operand2 + state -> regs[decodedDp -> rn];
@@ -105,11 +97,9 @@ void add_instr(decoded *decodedInstr, armstate *state){
             state -> z = 0;
         }
     }
-    free(decodedDp);
 }
 
-void tst_instr(decoded *decodedInstr, armstate *state){
-    decoded_dp *decodedDp = calloc(1, sizeof(decoded_dp));
+void tst_instr(decoded *decodedInstr, armstate *state, decoded_dp *decodedDp){
 
     decode_data_processing(decodedInstr, decodedDp, state);
     unsigned int res = decodedDp -> operand2 & state -> regs[decodedDp -> rn];
@@ -127,11 +117,9 @@ void tst_instr(decoded *decodedInstr, armstate *state){
             state -> z = 0;
         }
     }
-    free(decodedDp);
 }
 
-void teq_instr(decoded *decodedInstr, armstate *state){
-    decoded_dp *decodedDp = calloc(1, sizeof(decoded_dp));
+void teq_instr(decoded *decodedInstr, armstate *state, decoded_dp *decodedDp){
 
     decode_data_processing(decodedInstr, decodedDp, state);
     unsigned res = (state -> regs[decodedDp -> rn] ^ decodedDp -> operand2);
@@ -145,11 +133,9 @@ void teq_instr(decoded *decodedInstr, armstate *state){
             state -> z = 0;
         }
     }
-    free(decodedDp);
 }
 
-void cmp_instr(decoded *decodedInstr, armstate *state){
-    decoded_dp *decodedDp = calloc(1, sizeof(decoded_dp));
+void cmp_instr(decoded *decodedInstr, armstate *state, decoded_dp *decodedDp){
 
     decode_data_processing(decodedInstr, decodedDp, state);
     unsigned res = (state->regs[decodedDp->rn] - decodedDp->operand2);
@@ -167,11 +153,9 @@ void cmp_instr(decoded *decodedInstr, armstate *state){
             state -> z = 0;
         }
     }
-    free(decodedDp);
 }
 
-void orr_instr(decoded *decodedInstr, armstate *state){
-    decoded_dp *decodedDp = calloc(1, sizeof(decoded_dp));
+void orr_instr(decoded *decodedInstr, armstate *state, decoded_dp *decodedDp){
 
     decode_data_processing(decodedInstr, decodedDp, state);
     unsigned int res = (state -> regs[decodedDp -> rn] | decodedDp -> operand2);
@@ -186,11 +170,9 @@ void orr_instr(decoded *decodedInstr, armstate *state){
             state -> z = 0;
         }
     }
-    free(decodedDp);
 }
 
-void mov_instr(decoded *decodedInstr, armstate *state){
-    decoded_dp *decodedDp = calloc(1, sizeof(decoded_dp));
+void mov_instr(decoded *decodedInstr, armstate *state, decoded_dp *decodedDp){
 
     decode_data_processing(decodedInstr, decodedDp, state);
     state -> regs[decodedDp -> rd] = decodedDp -> operand2;
@@ -204,7 +186,6 @@ void mov_instr(decoded *decodedInstr, armstate *state){
             state -> z = 0;
         }
     }
-    free(decodedDp);
 }
 
 
@@ -248,12 +229,20 @@ void single_data_transfer_instr(decoded *decodedInstr, armstate *state){
     if(load_bit == 1) {
     	char *byteMem = (char *) state->memory;
     	int *memAdd = (int *)(byteMem + data);
-        state->regs[rd] = *memAdd;
+    	if (data <= 65535) {
+          state->regs[rd] = *memAdd;
+        } else {
+          printf("Error: Out of bounds memory access at address 0x%x\n", data);
+        }
     } else {
-        /*char *byteMem = (char*) state->memory;
+        char *byteMem = (char*) state->memory;
     	char *memAdd;
     	memAdd = byteMem + data;
-        *memAdd = state->regs[rn];*/
+    	if ((data <= 65535 && immediate == 0) || immediate == 1) {
+          *memAdd = state->regs[rn];
+        } else {
+          printf("Error: Out of bounds memory access at address 0x%x\n", data);
+        }
     }
 }
 

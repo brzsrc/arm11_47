@@ -130,36 +130,37 @@ void decode_data_processing(decoded *decodedInstr, decoded_dp *decodedDp, armsta
 
 void execute(decoded *decodedInstr, armstate *state){
     if(do_next_instruction(decodedInstr, state)){
+    decoded_dp *decodedDp = calloc(1, sizeof(decoded_dp));
         switch(decodedInstr -> type){
             case and:
-                and_instr(decodedInstr, state);
+                and_instr(decodedInstr, state, decodedDp);
                 break;
             case eor:
-                eor_instr(decodedInstr, state);
+                eor_instr(decodedInstr, state, decodedDp);
                 break;
             case sub:
-                sub_instr(decodedInstr, state);
+                sub_instr(decodedInstr, state, decodedDp);
                 break;
             case rsb:
-                rsb_instr(decodedInstr, state);
+                rsb_instr(decodedInstr, state, decodedDp);
                 break;
             case add:
-                add_instr(decodedInstr, state);
+                add_instr(decodedInstr, state, decodedDp);
                 break;
             case tst:
-                tst_instr(decodedInstr, state);
+                tst_instr(decodedInstr, state, decodedDp);
                 break;
             case teq:
-                teq_instr(decodedInstr, state);
+                teq_instr(decodedInstr, state, decodedDp);
                 break;
             case cmp:
-                cmp_instr(decodedInstr, state);
+                cmp_instr(decodedInstr, state, decodedDp);
                 break;
             case orr:
-                orr_instr(decodedInstr, state);
+                orr_instr(decodedInstr, state, decodedDp);
                 break;
             case mov:
-                mov_instr(decodedInstr, state);
+                mov_instr(decodedInstr, state, decodedDp);
                 break;
             case multiply:
                 multiply_instr(decodedInstr, state);
@@ -171,6 +172,7 @@ void execute(decoded *decodedInstr, armstate *state){
                 single_data_transfer_instr(decodedInstr, state);
                 break;
         }
+        free(decodedDp);
     }
         //state->regs[PC] += 4;
 }
