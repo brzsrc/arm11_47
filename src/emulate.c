@@ -37,8 +37,10 @@ void printResult(armstate *state, int numOfInstr) {
 		printf("CPSR:%11d (0x%08x)\n", state->regs[16], state->regs[16]);
 	}
   printf("Non-zero memory:\n");
-	for (int i = 0; i < ((state->regs[PC] / 4) - 2); i++) {
-    printf("0x%08x: 0x%08x\n", i * 4, state->memory[i]);
+	for (int i = 0; i < STACK_SIZE; i++) {
+		if (state->memory[i]) {
+      printf("0x%08x: 0x%08x\n", i * 4, state->memory[i]);
+		}
 	}
 }
 

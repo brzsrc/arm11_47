@@ -193,7 +193,7 @@ void single_data_transfer_instr(decoded *decodedInstr, armstate *state){
 
     unsigned int iw, immediate, offset, p_index, up_bit, load_bit, rn, rd;
     unsigned int data;
-    
+
     iw = decodedInstr->bit0to25;
     immediate = (iw >> 25) & 1;//0 - 24 bits 没了(第二十五位
     p_index = (iw >> 24) & 1;
@@ -209,7 +209,7 @@ void single_data_transfer_instr(decoded *decodedInstr, armstate *state){
         // Operand2 is a register, return the value of offset / op2
         val_reg_last12bits(decodedInstr, &offset, state);
     }
-    
+
     if(p_index == 1){
         if(up_bit == 1){
             data = offset + state->regs[rn];
@@ -225,21 +225,18 @@ void single_data_transfer_instr(decoded *decodedInstr, armstate *state){
             state->regs[rn] -= offset;
         }
     }
-    
+    char *byteMem = (char *) state->memory;
+    int *memAdd = (int *)(byteMem + data);
+
     if(load_bit == 1) {
-    	char *byteMem = (char *) state->memory;
-    	int *memAdd = (int *)(byteMem + data);
-    	if (data <= 65535) {
+    	if (data < 65535) {
           state->regs[rd] = *memAdd;
         } else {
           printf("Error: Out of bounds memory access at address 0x%x\n", data);
         }
     } else {
-        char *byteMem = (char*) state->memory;
-    	char *memAdd;
-    	memAdd = byteMem + data;
-    	if ((data <= 65535 && immediate == 0) || immediate == 1) {
-          *memAdd = state->regs[rn];
+    	if ((data < 65535 && immediate == 0) || immediate == 1) {
+          *memAdd = state->regs[rd];
         } else {
           printf("Error: Out of bounds memory access at address 0x%x\n", data);
         }
