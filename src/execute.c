@@ -118,14 +118,14 @@ void decode_data_processing(decoded *decodedInstr, decoded_dp *decodedDp, armsta
             imm = imm >> 1 & 0x7fffffff;
           } else {
             imm = (imm >> 1) | 0x80000000;
-          } 
+          }
         }
         }
         operand2 = imm;
     } else{
         val_reg_last12bits(decodedInstr, &operand2, state);
     }
-    decodedDp -> operand2 = operand2; 
+    decodedDp -> operand2 = operand2;
 }
 
 void execute(decoded *decodedInstr, armstate *state){
@@ -176,4 +176,3 @@ void execute(decoded *decodedInstr, armstate *state){
     }
         //state->regs[PC] += 4;
 }
-

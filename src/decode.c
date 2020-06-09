@@ -16,7 +16,7 @@ void decode(unsigned int instruction, decoded *decodedInstr) {
     } else if (bit26and27 == 2) {
         decodedInstr->type = branch;
     }
-    
+
 }
 
 void findOpcode(decoded *decodedInstr, unsigned int instruction) {

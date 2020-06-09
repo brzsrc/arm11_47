@@ -37,7 +37,6 @@ void eor_instr(decoded *decodedInstr, armstate *state, decoded_dp *decodedDp){
 }
 
 void sub_instr(decoded *decodedInstr, armstate *state, decoded_dp *decodedDp){
-
     decode_data_processing(decodedInstr, decodedDp, state);
     unsigned int res = (state -> regs[decodedDp -> rn] - decodedDp -> operand2);
     state -> regs[decodedDp -> rd] = res;
@@ -136,7 +135,6 @@ void teq_instr(decoded *decodedInstr, armstate *state, decoded_dp *decodedDp){
 }
 
 void cmp_instr(decoded *decodedInstr, armstate *state, decoded_dp *decodedDp){
-
     decode_data_processing(decodedInstr, decodedDp, state);
     unsigned res = (state->regs[decodedDp->rn] - decodedDp->operand2);
 
@@ -173,7 +171,6 @@ void orr_instr(decoded *decodedInstr, armstate *state, decoded_dp *decodedDp){
 }
 
 void mov_instr(decoded *decodedInstr, armstate *state, decoded_dp *decodedDp){
-
     decode_data_processing(decodedInstr, decodedDp, state);
     state -> regs[decodedDp -> rd] = decodedDp -> operand2;
 
@@ -273,6 +270,7 @@ void multiply_instr(decoded *decodedInstr, armstate *state){
 
 //not sure about branch execution///////////////
 void branch_instr(decoded *decodedInstr, armstate *state){
+
     signed int offset;
     unsigned int iw = decodedInstr->bit0to25;
 

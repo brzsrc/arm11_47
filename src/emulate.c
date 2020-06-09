@@ -6,10 +6,7 @@
 #include "fetch.h"
 #include "execute.h"
 #include <math.h>
-
-#define NREGS 17
-#define STACK_SIZE 16384 //Defined stack as ints which are 4 bytes so (64*1024)/4
-#define PC 15
+#include <time.h>
 
 void bigToLittleEndian(armstate *state) {
 	int temp;
@@ -20,18 +17,26 @@ void bigToLittleEndian(armstate *state) {
 	}
 }
 
-void printResult(armstate *state, int numOfInstr) {
+void printResult(armstate *state) {
+	//clock_t start, end;
+	//double timeTaken;
+	//start = clock();
+	#define INRANGE(x) (x < 0xc4653601) && (x >= 0x80000000)
   bigToLittleEndian(state);
   printf("Registers:\n");
   for (int i = 0; i < 13; i++) {
 		if (i < 10) {
-  	  printf("$%d  :%11d (0x%08x)\n", i, state->regs[i], state->regs[i]);
-	  } else {
-			printf("$%d :%11d (0x%08x)\n", i, state->regs[i], state->regs[i]);
+			if (INRANGE(state->regs[i])) {
+				printf("$%d  :%12d (0x%08x)\n", i, state->regs[i], state->regs[i]);
+			} else {
+			  printf("$%d  :%11d (0x%08x)\n", i, state->regs[i], state->regs[i]);
+			}
+		} else {
+			printf("$%d :%11i (0x%08x)\n", i, state->regs[i], state->regs[i]);
 		}
-  }
+	}
   printf("PC  :%11d (0x%08x)\n", state->regs[PC], state->regs[PC]);
-	if (state->regs[16] >= pow(2, 31)) {
+	if (state->regs[16] >= (1 << 31)) {
     printf("CPSR:%12d (0x%08x)\n", state->regs[16], state->regs[16]);
   } else {
 		printf("CPSR:%11d (0x%08x)\n", state->regs[16], state->regs[16]);
@@ -42,11 +47,14 @@ void printResult(armstate *state, int numOfInstr) {
       printf("0x%08x: 0x%08x\n", i * 4, state->memory[i]);
 		}
 	}
+	//end = clock();
+	//timeTaken = ((double)(end - start)) / CLOCKS_PER_SEC;
+	//printf("Time Taken for printing results: %f\n", timeTaken);
 }
 
 void startCycle(armstate *state) {
     unsigned int *pc = &(state->regs[PC]); //pc takes the value of the program counter
-    unsigned int fetched, counter = 0;
+    unsigned int fetched;
     decoded *decodedInstr = (decoded *) calloc(1, sizeof(decoded));
     bool finished = false;
     unsigned int *objectcode = state->memory;
@@ -72,21 +80,21 @@ void startCycle(armstate *state) {
         if (decodedInstr->condition == 0 && decodedInstr->bit0to25 == 0 &&
 					decodedInstr->type == and){
           finished = true;
-					counter -= 2;
         }
       }
       state->regs[16] = state->n << 31 | state->z << 30 | state->c << 29 |
 			state->v << 28;
-      counter++;
     }
 
-    printResult(state, counter);
+    printResult(state);
 
     free(decodedInstr);
 } //pipeline
 
 int main(int argc, char **argv) {
-
+	//clock_t start, end;
+	//double timeTaken;
+	//start = clock();
     //unsigned int registers[NREGS];
     armstate *state = (armstate *) calloc(1, sizeof(armstate));
 
@@ -99,5 +107,8 @@ int main(int argc, char **argv) {
 
     free(state->memory);
     free(state);
+		//end = clock();
+		//timeTaken = ((double)(end - start)) / CLOCKS_PER_SEC;
+		//printf("Time Taken: %f\n", timeTaken);
     return EXIT_SUCCESS;
 }
