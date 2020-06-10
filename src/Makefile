@@ -1,11 +1,16 @@
 CC      = gcc
 CFLAGS  = -Wall -g -std=c99 -Werror -pedantic
-FILES = emulate.c fetch.c decode.c execute.c instrType.c
-
+EMULATEFILES = emulate.c fetch.c decode.c execute.c instrType.c
+ASSEMBLEFILES = assemble.c readFile.c
 #.PHONY: all clean
 
-all: emulate.o fetch.o execute.o decode.o instrType.o
-	$(CC) $(CFLAGS) $(FILES) -o emulate
+all: emulate assemble
+
+emulate: emulate.o fetch.o decode.o execute.o instrType.o
+	$(CC) $(CFLAGS) $(EMULATEFILES) -o emulate
+
+assemble: assemble.o readFile.o
+	$(CC) $(CFLAGS) $(ASSEMBLEFILES) -o assemble
 
 clean:
 	rm -f $(wildcard *.o)
