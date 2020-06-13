@@ -12,10 +12,6 @@ static const char *mnemonicsList[] = {
 	"mla", "ldr", "str", "beq", "bne", "bge", "blt", "bgt", "ble", "b", "lsl", "andeq"
 };
 
-int checkBit(int pos, int number) {
-	return (number >> pos) % pos != 0;
-}
-
 void second_pass(FILE *srcFile, FILE *dstFile) {
 	int currentAddress = 0;
 	char *buffer = calloc(50, sizeof(char));
@@ -82,7 +78,17 @@ int getOperand2(char operands[20]) {
 	} else {
 		result = atoi(operands + 1);
 	}
-	return result;
+	if (result < 256) {
+		return result;
+	} else {
+		int x = 16;
+		while(result > 255 || ((result & 3) == 0)) {
+			result = (result >> 2);
+			x--;
+		}
+		result |= (x << 8);
+		return result;
+	}
 }
 
 int isImmediate(char operands[20]) {
@@ -152,7 +158,11 @@ int assembleDataProcessing(enum mnemonics mnemonic, char operands[6][20]) {
 		default:
 			perror("Invalid mnemonic");
 	}
-	int rn = 0;
+	int rn = atoi(operands[0] + 1);
+	int operand2 = getOperand2(operands[1]);
+	int immediate = isImmediate(operands[1]);
+	setBitAtPos(25, immediate, &result);
+	setBitAtPos(0, operand2, &result);
 	setBitAtPos(20, 1, &result);
 	setBitAtPos(21, opCode, &result);
 	setBitAtPos(16, rn, &result);
@@ -177,12 +187,41 @@ int assembleMultiply(enum mnemonics mnemonic, char operands[6][20]) {
 }
 
 int assembleSIngleDataTransfer(enum mnemonics mnemonic, char operands[6][20]) {
-	int result = 0, cond = 14; //1110
+	int result = 0, cond = 14, offset; //1110
 	int rd = atoi(operands[0] + 1);
+	setBitAtPos(12, rd, &result);
 	setBitAtPos(28, cond, &result);
-	setBitAtPos(26, 1, &result);
 	if (mnemonic == LDR) {
+		if (operands[1][0] == '=') {
+			setBitAtPos(25, 1, &result);
+			setBitAtPos(21, 13, &result);
+			int operand2 = getOperand2(operands[1]);
+			if (operand2 < (1 << 12)) {
+			  setBitAtPos(0, operand2, &result);
+				return result;
+			} else {
+				//Write the value to the end of the binary file
+				setBitAtPos(20, 1, &result);
+			}
+		}
+		setBitAtPos(26, 1, &result);
 		setBitAtPos(20, 1, &result);
+		int rn = atoi(operands[1] + 2);
+		setBitAtPos(16, rn, &result);
+		if (operands[1][3] == ']') {
+			offset = 0;
+			setBitAtPos(24, 1, &result);
+			setBitAtPos(23, 1, &result);
+		} else {
+			if (operands[2][0] == '#') {
+				setBitAtPos(25, 1, &result);
+				offset = atoi(operands[2] + 1);
+				setBitAtPos(0, offset, &result);
+			} else {
+				offset = atoi(operands[2] + 1);
+				setBitAtPos(0, offset, &result);
+			}
+		}
 	}
   return result;
 }
