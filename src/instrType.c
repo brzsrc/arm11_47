@@ -229,13 +229,13 @@ void single_data_transfer_instr(decoded *decodedInstr, armstate *state){
     	if (data < 65535) {
           state->regs[rd] = *memAdd;
         } else {
-          printf("Error: Out of bounds memory access at address 0x%x\n", data);
+          printf("Error: Out of bounds memory access at address 0x%08x\n", data);
         }
     } else {
     	if ((data < 65535 && immediate == 0) || immediate == 1) {
           *memAdd = state->regs[rd];
         } else {
-          printf("Error: Out of bounds memory access at address 0x%x\n", data);
+          printf("Error: Out of bounds memory access at address 0x%08x\n", data);
         }
     }
 }
