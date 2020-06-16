@@ -12,29 +12,51 @@ static const char *mnemonicsList[] = {
 	"mla", "ldr", "str", "beq", "bne", "bge", "blt", "bgt", "ble", "b", "lsl", "andeq"
 };
 
+int getNoOfInstructions(FILE *srcFile) {
+	int result = 0;
+	char *buffer = calloc(50, sizeof(char));
+	while (fgets(buffer, 50, srcFile)) {
+		int len = strlen(buffer);
+		if (buffer[len - 1] != ':') {
+			result++;
+		}
+	}
+	return result;
+}
+
 void second_pass(FILE *srcFile, FILE *dstFile) {
 	int currentAddress = 0;
+	int noOfInstructions = getNoOfInstructions(srcFile);
+	rewind(srcFile);
 	char *buffer = calloc(50, sizeof(char));
+	int *storedValues = calloc(20, sizeof(char));
 	memset(buffer, 0, sizeof(char) * sizeof(buffer));
 	while (fgets(buffer, 50, srcFile)) {
 		int len = strlen(buffer);
-		if (buffer[len - 1] == ':') {
-			continue;
-		}
-		int instruction = 0;
-		instruction = generateBinary(buffer);
-		fwrite(&instruction, sizeof(int), 1, dstFile);
-		currentAddress += 4;
+		if (buffer[len - 1] != ':') {
+		  int instruction = 0;
+		  instruction = generateBinary(buffer, storedValues, currentAddress, noOfInstructions);
+		  fwrite(&instruction, sizeof(int), 1, dstFile);
+		  currentAddress += 4;
+	  }
 		memset(buffer, 0, sizeof(char) * sizeof(buffer));
 	}
+	int i = 0;
+	while (storedValues[i]) {
+		fwrite(&storedValues[i], sizeof(int), 1, dstFile);
+		i++;
+	}
+	free(storedValues);
 	free(buffer);
 }
+
+
 
 void setBitAtPos(int pos, int value, int *number) {
 	*number |= (value << pos);
 }
 
-int generateBinary(char *buffer) {
+int generateBinary(char *buffer, int *storedValues, int currentAddress, int noOfInstructions) {
 	//int len = strlen(buffer);
 	char *sep = " ,", *token = strtok(buffer, sep), operands[6][20];
 	memset(operands, 0, sizeof(operands));
@@ -53,7 +75,7 @@ int generateBinary(char *buffer) {
 		return assembleMultiply(mnemonic, operands);
 	}
 	if (mnemonic < BEQ) {
-		return assembleSIngleDataTransfer(mnemonic, operands);
+		return assembleSIngleDataTransfer(mnemonic, operands, storedValues, noOfInstructions, currentAddress);
 	}
 	if (mnemonic < LSLOP) {
 		return assembleBranch(mnemonic, operands);
@@ -186,26 +208,42 @@ int assembleMultiply(enum mnemonics mnemonic, char operands[6][20]) {
 	return result;
 }
 
-int assembleSIngleDataTransfer(enum mnemonics mnemonic, char operands[6][20]) {
+int assembleSIngleDataTransfer(enum mnemonics mnemonic, char operands[6][20], int *storedValues, int noOfInstructions, int pc) {
 	int result = 0, cond = 14, offset; //1110
 	int rd = atoi(operands[0] + 1);
 	setBitAtPos(12, rd, &result);
 	setBitAtPos(28, cond, &result);
 	if (mnemonic == LDR) {
 		if (operands[1][0] == '=') {
-			setBitAtPos(25, 1, &result);
-			setBitAtPos(21, 13, &result);
-			int operand2 = getOperand2(operands[1]);
+			int operand2 = (int) strtol(operands[1] + 1, NULL, 0);
 			if (operand2 < (1 << 12)) {
+				setBitAtPos(25, 1, &result);
+				setBitAtPos(21, 13, &result);
 			  setBitAtPos(0, operand2, &result);
 				return result;
 			} else {
 				//Write the value to the end of the binary file
+				int i = 0;
+				while(storedValues[i]) {
+					i++;
+				}
+				storedValues[i] = operand2;
+				offset = (noOfInstructions - (pc / 4) + i - 2) * 4 ;
+				setBitAtPos(0, offset, &result);
 				setBitAtPos(20, 1, &result);
+				setBitAtPos(24, 1, &result);
+				setBitAtPos(26, 1, &result);
+				setBitAtPos(20, 1, &result);
+				setBitAtPos(23, 1, &result);
+				setBitAtPos(16, 15, &result);
+				return result;
 			}
 		}
+	}
 		setBitAtPos(26, 1, &result);
-		setBitAtPos(20, 1, &result);
+		if (mnemonic == LDR) {
+		  setBitAtPos(20, 1, &result);
+		}
 		int rn = atoi(operands[1] + 2);
 		setBitAtPos(16, rn, &result);
 		if (operands[1][3] == ']') {
@@ -214,15 +252,22 @@ int assembleSIngleDataTransfer(enum mnemonics mnemonic, char operands[6][20]) {
 			setBitAtPos(23, 1, &result);
 		} else {
 			if (operands[2][0] == '#') {
-				setBitAtPos(25, 1, &result);
-				offset = atoi(operands[2] + 1);
+				setBitAtPos(24, 1, &result);
+				if (operands[2][2] == 'x') {
+					offset = (int) strtol(operands[2] + 1, NULL, 0); //Converts a hex string into an integer
+					setBitAtPos(23, 1, &result);
+				} else if (operands[2][3] == 'x' && operands[2][1] == '-') {
+					offset = (int) strtol(operands[2] + 2, NULL, 0);
+				} else {
+					offset = atoi(operands[2] + 1);
+					setBitAtPos(23, 1, &result);
+				}
 				setBitAtPos(0, offset, &result);
 			} else {
 				offset = atoi(operands[2] + 1);
 				setBitAtPos(0, offset, &result);
 			}
 		}
-	}
   return result;
 }
 
