@@ -6,11 +6,13 @@ enum mnemonics {
 	ADD, SUB, RSB, AND, EOR, ORR, MOV, TST, TEQ, CMP, MUL, MLA, LDR, STR, BEQ, BNE, BGE, BLT, BGT, BLE, B, LSLOP, ANDEQ
 };
 
+int findLabel(FILE *srcFile, char *label, int currentAddress);
+
 int getNoOfInstructions(FILE *srcFile);
 
 void second_pass(FILE *srcFile, FILE *dstFile);
 
-int generateBinary(char *buffer, int *storedValues, int currentAddress, int noOfInstructions);
+int generateBinary(char *buffer, int *storedValues, int currentAddress, int noOfInstructions, FILE *srcFile);
 
 int findMnemonic(char *p);
 
@@ -20,7 +22,7 @@ int assembleMultiply(enum mnemonics mnemonic, char operands[6][20]);
 
 int assembleSIngleDataTransfer(enum mnemonics mnemonic, char operands[6][20], int *storedValues, int noOfInstructions, int pc);
 
-int assembleBranch(enum mnemonics mnemonic, char operands[6][20]);
+int assembleBranch(enum mnemonics mnemonic, char operands[6][20], FILE *srcFile, int currentAddress);
 
 int assembleSpecial(enum mnemonics mnemonic, char operands[6][20]);
 

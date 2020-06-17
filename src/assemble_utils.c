@@ -12,12 +12,30 @@ static const char *mnemonicsList[] = {
 	"mla", "ldr", "str", "beq", "bne", "bge", "blt", "bgt", "ble", "b", "lsl", "andeq"
 };
 
+int findLabel(FILE *srcFile, char *label, int currentAddress) {
+	int i = 0;
+	char *buffer = calloc(50, sizeof(char));
+	rewind(srcFile);
+	label[strlen(label) - 1] = '\0';
+	char *colon = ":\n";
+	strcat(label, colon);
+	while (fgets(buffer, 50, srcFile)) {
+		if (strcmp(buffer, label) == 0) {
+			return i - currentAddress - 8;
+		}
+		if (buffer[strlen(buffer) - 2] != ':') {
+		  i += 4;
+		}
+	}
+	return 0;
+}
+
 int getNoOfInstructions(FILE *srcFile) {
 	int result = 0;
 	char *buffer = calloc(50, sizeof(char));
 	while (fgets(buffer, 50, srcFile)) {
 		int len = strlen(buffer);
-		if (buffer[len - 1] != ':') {
+		if (buffer[len - 2] != ':') {
 			result++;
 		}
 	}
@@ -33,9 +51,9 @@ void second_pass(FILE *srcFile, FILE *dstFile) {
 	memset(buffer, 0, sizeof(char) * sizeof(buffer));
 	while (fgets(buffer, 50, srcFile)) {
 		int len = strlen(buffer);
-		if (buffer[len - 1] != ':') {
+		if (buffer[len - 2] != ':' && *buffer != '\n') {
 		  int instruction = 0;
-		  instruction = generateBinary(buffer, storedValues, currentAddress, noOfInstructions);
+		  instruction = generateBinary(buffer, storedValues, currentAddress, noOfInstructions, srcFile);
 		  fwrite(&instruction, sizeof(int), 1, dstFile);
 		  currentAddress += 4;
 	  }
@@ -56,7 +74,7 @@ void setBitAtPos(int pos, int value, int *number) {
 	*number |= (value << pos);
 }
 
-int generateBinary(char *buffer, int *storedValues, int currentAddress, int noOfInstructions) {
+int generateBinary(char *buffer, int *storedValues, int currentAddress, int noOfInstructions, FILE *srcFile) {
 	//int len = strlen(buffer);
 	char *sep = " ,", *token = strtok(buffer, sep), operands[6][20];
 	memset(operands, 0, sizeof(operands));
@@ -78,7 +96,7 @@ int generateBinary(char *buffer, int *storedValues, int currentAddress, int noOf
 		return assembleSIngleDataTransfer(mnemonic, operands, storedValues, noOfInstructions, currentAddress);
 	}
 	if (mnemonic < LSLOP) {
-		return assembleBranch(mnemonic, operands);
+		return assembleBranch(mnemonic, operands, srcFile, currentAddress);
 	}
 	return assembleSpecial(mnemonic, operands);
 }
@@ -162,9 +180,14 @@ int assembleDataProcessing(enum mnemonics mnemonic, char operands[6][20]) {
 		setBitAtPos(21, opCode, &result);
 		setBitAtPos(12, rd, &result);
 		int operand2 = getOperand2(operands[1]);
+		int leftShift = 0;
+		if (strcmp(operands[2], "lsl") == 0) {
+			leftShift = getOperand2(operands[3]);
+		}
 		int immediate = isImmediate(operands[1]);
 		setBitAtPos(25, immediate, &result);
 		setBitAtPos(0, operand2, &result);
+		setBitAtPos(7, leftShift, &result);
 		return result;
 	}
 	switch (mnemonic) {
@@ -246,7 +269,7 @@ int assembleSIngleDataTransfer(enum mnemonics mnemonic, char operands[6][20], in
 		}
 		int rn = atoi(operands[1] + 2);
 		setBitAtPos(16, rn, &result);
-		if (operands[1][3] == ']') {
+		if (operands[1][3] == ']' && !operands[2][0]) {
 			offset = 0;
 			setBitAtPos(24, 1, &result);
 			setBitAtPos(23, 1, &result);
@@ -265,14 +288,19 @@ int assembleSIngleDataTransfer(enum mnemonics mnemonic, char operands[6][20], in
 				setBitAtPos(0, offset, &result);
 			} else {
 				offset = atoi(operands[2] + 1);
+				if (operands[2][strlen(operands[2]) - 2] == ']') {
+					setBitAtPos(24, 1, &result);
+				}
+				setBitAtPos(23, 1, &result);
+				setBitAtPos(25, 1, &result);
 				setBitAtPos(0, offset, &result);
 			}
 		}
   return result;
 }
 
-int assembleBranch(enum mnemonics mnemonic, char operands[6][20]) {
-	int result = 0, cond = 14, mask = 5; //1110, 101
+int assembleBranch(enum mnemonics mnemonic, char operands[6][20], FILE *srcFile, int currentAddress) {
+	int result = 0, cond = 14, mask = 5, offset; //1110, 101
 	if (mnemonic >= BEQ && mnemonic <= B) {
 		switch (mnemonic) {
 			case BEQ:
@@ -302,6 +330,14 @@ int assembleBranch(enum mnemonics mnemonic, char operands[6][20]) {
 	}
 	setBitAtPos(28, cond, &result);
 	setBitAtPos(25, mask, &result);
+	int temp = ftell(srcFile);
+	offset = findLabel(srcFile, operands[0], currentAddress);
+	if (offset < 0) {
+		offset = offset >> 2;
+		offset &= 0x00ffffff;
+	}
+  setBitAtPos(0, offset, &result);
+	fseek(srcFile, temp, SEEK_SET);
   return result;
 }
 
@@ -312,5 +348,6 @@ int assembleSpecial(enum mnemonics mnemonic, char operands[6][20]) {
 	strcpy(operands[3], operands[1]);
 	strcpy(operands[1], operands[0]);
 	strcpy(operands[2], "lsl");
-	return assembleDataProcessing(MOV, operands);
+  return assembleDataProcessing(MOV, operands);
+
 }
