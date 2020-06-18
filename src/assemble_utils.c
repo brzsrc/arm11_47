@@ -135,7 +135,7 @@ int isImmediate(char operands[20]) {
 }
 
 int assembleDataProcessing(enum mnemonics mnemonic, char operands[6][20]) {
-	int result = 0, opCode, cond = COND_AL; //14 = 1110
+	int result = 0, opCode, cond = COND_AL, rn = 0, rd = 0, operand2 = 0, immediate = 0, s_bit = 0; //14 = 1110
 	setBitAtPos(COND_BIT, cond, &result);
 	if (mnemonic >= ADD && mnemonic <= ORR) {
 		switch (mnemonic) {
@@ -158,55 +158,67 @@ int assembleDataProcessing(enum mnemonics mnemonic, char operands[6][20]) {
 				opCode = 12; //1100
 				break;
 			default:
-				perror("Invalid mnemonic");
+				printf("Invalid mnemonic");
 		}
-		int rd = atoi(operands[0] + 1), rn = atoi(operands[1] + 1);
-		setBitAtPos(DATA_PROCESS_OPCODE_BIT, opCode, &result);
-		setBitAtPos(DATA_PROCESS_RN_BIT, rn, &result);
-		setBitAtPos(DATA_PROCESS_RD_BIT, rd, &result);
-		int operand2 = getOperand2(operands[2]);
-		int immediate = isImmediate(operands[2]);
-		setBitAtPos(DATA_PROCESS_I_BIT, immediate, &result);
-		setBitAtPos(0, operand2, &result);
-		return result;
+		rd = atoi(operands[0] + 1);
+		rn = atoi(operands[1] + 1);
+		operand2 = getOperand2(operands[2]);
+		immediate = isImmediate(operands[2]);
+		int leftShift = 0, rightShift = 0;
+		if (!strcmp(operands[3], "lsl")) {
+			leftShift = getOperand2(operands[4]);
+			setBitAtPos(8, leftShift, &result);
+		}
+		if (!strcmp(operands[3], "lsr")) {
+			rightShift = getOperand2(operands[4]);
+			setBitAtPos(8, rightShift, &result);
+			setBitAtPos(4, 3, &result);
+		}
 	}
 	if (mnemonic == MOV) {
-		int rd = atoi(operands[0] + 1);
+		rd = atoi(operands[0] + 1);
 		opCode = 13; //1101
-		setBitAtPos(DATA_PROCESS_OPCODE_BIT, opCode, &result);
-		setBitAtPos(DATA_PROCESS_RD_BIT, rd, &result);
-		int operand2 = getOperand2(operands[1]);
+		operand2 = getOperand2(operands[1]);
 		int leftShift = 0;
 		if (!strcmp(operands[2], "lsl")) {
 			leftShift = getOperand2(operands[3]);
 		}
-		int immediate = isImmediate(operands[1]);
-		setBitAtPos(DATA_PROCESS_I_BIT, immediate, &result);
-		setBitAtPos(0, operand2, &result);
+		immediate = isImmediate(operands[1]);
 		setBitAtPos(7, leftShift, &result);
-		return result;
 	}
-	switch (mnemonic) {
-		case TST:
-			opCode = 8;  //1000
-			break;
-		case TEQ:
-			opCode = 9;  //1001
-			break;
-		case CMP:
-			opCode = 10; //1010
-			break;
-		default:
-			perror("Invalid mnemonic");
-	}
-	int rn = atoi(operands[0] + 1);
-	int operand2 = getOperand2(operands[1]);
-	int immediate = isImmediate(operands[1]);
+	if (mnemonic >= TST && mnemonic <= CMP) {
+		switch (mnemonic) {
+			case TST:
+				opCode = 8; //1000
+				rn = atoi(operands[0] + 1);
+			  operand2 = getOperand2(operands[1]);
+			  immediate = isImmediate(operands[1]);
+				s_bit = 1;
+				break;
+			case TEQ:
+				opCode = 9;  //1001
+				rn = atoi(operands[0] + 1);
+			  operand2 = getOperand2(operands[1]);
+			  immediate = isImmediate(operands[1]);
+				s_bit = 1;
+				break;
+			case CMP:
+				opCode = 10; //1010
+				rn = atoi(operands[0] + 1);
+			  operand2 = getOperand2(operands[1]);
+			  immediate = isImmediate(operands[1]);
+				s_bit = 1;
+				break;
+			default:
+				printf("Invalid mnemonic");
+		}
+  }
 	setBitAtPos(DATA_PROCESS_I_BIT, immediate, &result);
 	setBitAtPos(0, operand2, &result);
-	setBitAtPos(DATA_PROCESS_S_BIT, 1, &result);
+	setBitAtPos(DATA_PROCESS_S_BIT, s_bit, &result);
 	setBitAtPos(DATA_PROCESS_OPCODE_BIT, opCode, &result);
 	setBitAtPos(DATA_PROCESS_RN_BIT, rn, &result);
+	setBitAtPos(DATA_PROCESS_RD_BIT, rd, &result);
 	return result;
 }
 
@@ -228,70 +240,78 @@ int assembleMultiply(enum mnemonics mnemonic, char operands[6][20]) {
 }
 
 int assembleSingleDataTransfer(enum mnemonics mnemonic, char operands[6][20], int *storedValues, int noOfInstructions, int pc) {
-	int result = 0, cond = COND_AL, offset; //1110
-	int rd = atoi(operands[0] + 1);
-	setBitAtPos(SINGLEDATA_RD_BIT, rd, &result);
-	setBitAtPos(COND_BIT, cond, &result);
+	int result = 0, cond = COND_AL, offset = 0, load_bit = 0, p_bit = 0, mask = 1; //1110
+	int rd = atoi(operands[0] + 1), rn = 0, immediate = 0, up_bit = 0;
 	if (mnemonic == LDR) {
-		if (operands[1][0] == '=') {
-			int operand2 = (int) strtol(operands[1] + 1, NULL, 0);
-			if (operand2 < (1 << 12)) {
-				setBitAtPos(DATA_PROCESS_I_BIT, 1, &result);
-				setBitAtPos(DATA_PROCESS_OPCODE_BIT, 13, &result);
-			  setBitAtPos(0, operand2, &result);
-				return result;
-			} else {
-				//Write the value to the end of the binary file
-				int i = 0;
-				while(storedValues[i]) {
-					i++;
-				}
-				storedValues[i] = operand2;
-				offset = (noOfInstructions - (pc / 4) + i - 2) * 4 ;
-				setBitAtPos(0, offset, &result);
-				setBitAtPos(SINGLEDATA_LOAD_BIT, 1, &result);
-				setBitAtPos(SINGLEDATA_P_BIT, 1, &result);
-				setBitAtPos(26, 1, &result);
-				setBitAtPos(SINGLEDATA_LOAD_BIT, 1, &result);
-				setBitAtPos(SINGLEDATA_UP_BIT, 1, &result);
-				setBitAtPos(SINGLEDATA_RN_BIT, 15, &result);
-				return result;
+		load_bit = 1;
+	}
+	if (operands[1][0] == '=') {
+		int operand2 = (int) strtol(operands[1] + 1, NULL, 0);
+		if (operand2 < (1 << 12)) { //HAS FORM: ldr rd, =0x04
+			mnemonic = MOV;
+			operands[1][0] = '#';
+			return assembleDataProcessing(mnemonic, operands); //Returns the result as a mov, data processing function
+		} else { //HAS FORM: ldr rd, =0x100000000
+			int i = 0;
+			while(storedValues[i]) {
+				i++;
 			}
+			storedValues[i] = operand2; //Stores the value into memory
+			offset = (noOfInstructions - (pc / WORDLENGTH) + i - 2) * WORDLENGTH ;
+			p_bit = 1;
+			up_bit = 1;
+			rn = 15;
 		}
 	}
-		setBitAtPos(26, 1, &result);
-		if (mnemonic == LDR) {
-		  setBitAtPos(SINGLEDATA_LOAD_BIT, 1, &result);
-		}
-		int rn = atoi(operands[1] + 2);
-		setBitAtPos(SINGLEDATA_RN_BIT, rn, &result);
-		if (operands[1][3] == ']' && !operands[2][0]) {
-			offset = 0;
-			setBitAtPos(SINGLEDATA_P_BIT, 1, &result);
-			setBitAtPos(SINGLEDATA_UP_BIT, 1, &result);
+	if (operands[1][0] == '[') {
+		rn = atoi(operands[1] + 2);
+	}
+	if (operands[1][3] != ']') {
+		p_bit = 1;
+	}
+	if (operands[1][3] == ']' && !operands[2][0]) { //HAS FORM: ldr rd, [rn]
+		offset = 0;
+		p_bit = 1;
+	  up_bit = 1;
+	}
+	if (operands[2][0] == 'r') {
+		up_bit = 1;
+		immediate = 1;
+		offset = atoi(operands[2] + 1);
+	}
+  if (operands[2][0] == '#') { //HAS FORM ldr rd, [rn,#1]
+		up_bit = 1;
+		offset = atoi(operands[2] + 1);
+	}
+	if (operands[2][2] == 'x') {
+		offset = (int) strtol(operands[2] + 1, NULL, 0); //Converts a hex string into an integer
+	}
+	if (operands[2][3] == 'x' && operands[2][1] == '-') {
+		offset = (int) strtol(operands[2] + 2, NULL, 0);
+		up_bit = 0;
+	}
+  if (operands[1][3] == ']' && operands[2][0]) { //HAS FORM: ldr rd, [rn], #1
+		offset = atoi(operands[2] + 1);
+		up_bit = 1;
+	}
+	if (!strcmp(operands[3], "lsr")) {
+		setBitAtPos(5, 1, &result);
+		if (operands[4][0] == '#') {
+			setBitAtPos(7, atoi(operands[4] + 1), &result);
 		} else {
-			if (operands[2][0] == '#') {
-				setBitAtPos(SINGLEDATA_P_BIT, 1, &result);
-				if (operands[2][2] == 'x') {
-					offset = (int) strtol(operands[2] + 1, NULL, 0); //Converts a hex string into an integer
-					setBitAtPos(SINGLEDATA_UP_BIT, 1, &result);
-				} else if (operands[2][3] == 'x' && operands[2][1] == '-') {
-					offset = (int) strtol(operands[2] + 2, NULL, 0);
-				} else {
-					offset = atoi(operands[2] + 1);
-					setBitAtPos(SINGLEDATA_UP_BIT, 1, &result);
-				}
-				setBitAtPos(0, offset, &result);
-			} else {
-				offset = atoi(operands[2] + 1);
-				if (operands[2][strlen(operands[2]) - 2] == ']') {
-					setBitAtPos(SINGLEDATA_P_BIT, 1, &result);
-				}
-				setBitAtPos(SINGLEDATA_UP_BIT, 1, &result);
-				setBitAtPos(SINGLEDATA_I_BIT, 1, &result);
-				setBitAtPos(0, offset, &result);
-			}
+			setBitAtPos(4, 1, & result);
+			setBitAtPos(8, atoi(operands[4] + 1), &result);
 		}
+	}
+		setBitAtPos(COND_BIT, cond, &result);
+		setBitAtPos(0, offset, &result);
+		setBitAtPos(SINGLEDATA_LOAD_BIT, load_bit, &result);
+		setBitAtPos(SINGLEDATA_P_BIT, p_bit, &result);
+		setBitAtPos(26, mask, &result);
+		setBitAtPos(SINGLEDATA_UP_BIT, up_bit, &result);
+		setBitAtPos(SINGLEDATA_RN_BIT, rn, &result);
+		setBitAtPos(SINGLEDATA_RD_BIT, rd, &result);
+		setBitAtPos(SINGLEDATA_I_BIT, immediate, &result);
   return result;
 }
 
@@ -300,28 +320,28 @@ int assembleBranch(enum mnemonics mnemonic, char operands[6][20], FILE *srcFile,
 	if (mnemonic >= BEQ && mnemonic <= B) {
 		switch (mnemonic) {
 			case BEQ:
-				cond = 0;  //0000
+				cond = COND_EQ;  //0000
 				break;
 			case BNE:
-				cond = 1;  //0001
+				cond = COND_NE;  //0001
 				break;
 			case BGE:
-				cond = 10; //1010
+				cond = COND_GE; //1010
 				break;
 			case BLT:
-				cond = 11; //1011
+				cond = COND_LT; //1011
 				break;
 			case BGT:
-				cond = 12; //1100
+				cond = COND_GT; //1100
 				break;
 			case BLE:
-				cond = 13; //1101
+				cond = COND_LE; //1101
 				break;
 			case B:
-				cond = 14; //1110
+				cond = COND_AL; //1110
 				break;
 			default:
-				perror("Invalid mnemonic");
+				printf("Invalid mnemonic");
 		}
 	}
 	setBitAtPos(COND_BIT, cond, &result);
