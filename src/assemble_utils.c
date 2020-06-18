@@ -5,9 +5,12 @@
 #include "macrosAndStructs.h"
 
 static const char *mnemonicsList[] = {
-	"add", "sub", "rsb", "and", "eor", "orr", "mov", "tst", "teq", "cmp", "mul",
-	"mla", "ldr", "str", "beq", "bne", "bge", "blt", "bgt", "ble", "b", "lsl", "andeq"
+	"add", "sub", "rsb", "and", "eor", "orr", "mov", "tst", "teq", "cmp", "mul", "mla", "ldr", "str",
+	"beq", "bne", "bge", "blt", "bgt", "ble", "b",
+	"bleq", "blne", "blge", "bllt", "blgt", "blle", "bl",  //extension instruction set
+	"lsl", "andeq", "swi", "bx", "swp", "swpb"  //swi, bx, swp, swpb - extension instructions
 };
+
 
 int findLabel(FILE *srcFile, char *label, int currentAddress) {
 	int i = 0;
@@ -75,6 +78,9 @@ int generateBinary(char *buffer, int *storedValues, int currentAddress, int noOf
 	char *sep = " ,", *token = strtok(buffer, sep), operands[6][20];
 	memset(operands, 0, sizeof(operands));
 	int mnemonic = findMnemonic(token), noOperands = 0;
+	if (mnemonic == -1) {
+        return UNDEFINED;
+	}
 	while (token != NULL) {
 		token = strtok(NULL, sep);
 		if (token) {
@@ -91,11 +97,15 @@ int generateBinary(char *buffer, int *storedValues, int currentAddress, int noOf
 	if (mnemonic < BEQ) {
 		return assembleSingleDataTransfer(mnemonic, operands, storedValues, noOfInstructions, currentAddress);
 	}
-	if (mnemonic < LSLOP) {
+	if (mnemonic < BLEQ) {
 		return assembleBranch(mnemonic, operands, srcFile, currentAddress);
+		}
+	if (mnemonic < LSL) {
+		return assembleBranchLink(mnemonic, operands, srcFile, currentAddress);
 	}
 	return assembleSpecial(mnemonic, operands);
 }
+
 
 int findMnemonic(char *p) {
     int i;
@@ -106,7 +116,7 @@ int findMnemonic(char *p) {
     }
     return -1; //instruction not found
 }
-
+ 
 int getOperand2(char operands[20]) {
 	int result = 0;
 	if (operands[2] == 'x') {
@@ -357,13 +367,76 @@ int assembleBranch(enum mnemonics mnemonic, char operands[6][20], FILE *srcFile,
   return result;
 }
 
-int assembleSpecial(enum mnemonics mnemonic, char operands[6][20]) {
-	if (mnemonic == ANDEQ) {
-		return 0;
-	}
-	strcpy(operands[3], operands[1]);
-	strcpy(operands[1], operands[0]);
-	strcpy(operands[2], "lsl");
-  return assembleDataProcessing(MOV, operands);
+int assembleBranchLink(enum mnemonics mnemonic, char operands[6][20], FILE *srcFile, int currentAddress) {	//extension instruction set
+	int result = 0;
+	if (mnemonic >= BLEQ && mnemonic <= BL) {
+			switch (mnemonic) {
+				case BLEQ:
+					result = assembleBranch(BEQ, operands, srcFile, currentAddress);
+					break;
+				case BLNE:
+					result = assembleBranch(BNE, operands, srcFile, currentAddress);
+					break;
+				case BLGE:
+					result = assembleBranch(BGE, operands, srcFile, currentAddress);
+					break;
+				case BLLT:
+					result = assembleBranch(BLT, operands, srcFile, currentAddress);
+					break;
+				case BLGT:
+					result = assembleBranch(BGT, operands, srcFile, currentAddress);
+					break;
+				case BLLE:
+					result = assembleBranch(BLE, operands, srcFile, currentAddress);
+					break;
+				case BL:
+					result = assembleBranch(B, operands, srcFile, currentAddress);
+					break;
+				default:
+                    printf("Invalid mnemonic");
+			}
+		}
+	setBitAtPos(24, 1, &result);
+	return result;
+}
 
+int assembleSpecial(enum mnemonics mnemonic, char operands[6][20]) {
+	int result = 0, cond = COND_AL, mask, rn;
+	switch (mnemonic) {
+		case SWI:	//extension instruction
+			mask = 15; // 1111
+			setBitAtPos(COND_BIT, cond, &result);
+			setBitAtPos(24, mask, &result);
+			return result;
+		case BX:	//extension instruction
+			mask = 1245169, rn = atoi(operands[0] + 1); //100101111111111110001
+			setBitAtPos(COND_BIT, cond, &result);
+			setBitAtPos(4, mask, &result);
+			setBitAtPos(0, rn, &result);
+			return result;
+		case LSL:
+			strcpy(operands[3], operands[1]);
+			strcpy(operands[1], operands[0]);
+			strcpy(operands[2], "lsl");
+			return assembleDataProcessing(MOV, operands);
+		case ANDEQ:
+			return 0;
+		case SWP:	//extension instruction
+			mask = 9, rn = atoi(operands[2] + 2);   //1001
+			int rd = atoi(operands[0] + 1), rm = atoi(operands[1] + 1);
+			setBitAtPos(COND_BIT, cond, &result);
+			setBitAtPos(0, rm, &result);
+			setBitAtPos(12, rd, &result);
+			setBitAtPos(16, rn, &result);
+			setBitAtPos(4, mask, &result);
+			setBitAtPos(24, 1, &result);
+			return result;
+		case SWPB:	//extension instruction
+			result = assembleSpecial(SWP, operands);
+			setBitAtPos(22, 1, &result);
+			return result;
+		default:
+      printf("Invalid mnemonic");
+			return result;
+	}
 }
