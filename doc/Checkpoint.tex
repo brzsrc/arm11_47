@@ -1,30 +1,95 @@
-\documentclass[11pt]{article}
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
 
-\usepackage{fullpage}
+\title{ARM11 - Checkpoint Report}
+\author{Group 47 - \\
+Samuel Andresen, Claire Shen, Christopher Kuan, \\
+Jordan Emery, Sanidhya Singh}
+\date{May/June 2020}
 
 \begin{document}
 
-\title{ARM Checkpoint... }
-\author{TODO}
-
 \maketitle
 
-\section{Group Organisation}
+\section*{Work Distribution and Co-ordination}
+Communication was done via a WhatsApp group for small queries and updates and 
+the Microsoft Teams group for meetings. While only Samuel and Claire (Siran) 
+attended the first meeting, Christopher participated in the project as well; 
+Jordan and Sanidhya were not present for any meetings and had no participation 
+with the project at this point. The work was split into parts based on emulator 
+cycles and instruction sets, with members being able to implement any part they 
+wanted. The emulator was mainly programmed by Samuel and Claire (Siran), where 
+Samuel did the implementation for the fetch and decode aspects, whilst Claire 
+focused on the execute aspect and also helped out a bit with the decode. Work 
+was also done to prepare for the assembler section, with utility functions being 
+partially implemented by Christopher.
 
-Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor
-incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis
-nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
-fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-culpa qui officia deserunt mollit anim id est laborum.
+\section*{Group Efficiency}
+Time zone differences due to remote working made communication difficult, but 
+since work was separated into fairly disjoint parts and each part was able to be 
+taken by anyone, provided they informed the group, overall progress was still 
+made on the project.
 
-\section{Implementation Strategies}
+\section*{Emulator Structure}
+The fetch, decode and execute cycles are done in succession, with the ARM state 
+memory location being passed into the execute function to be altered in the 
+function. The decode function identifies the instruction type, and if it is a 
+data processing instruction, the op code is identified instead. A data struct 
+is used to store the instruction type and the relevant bits to be used for 
+execution. Then, the instruction is passed into the relevant execute function, 
+with each data processing op code having a separate one, and the other 
+instruction types having collective functions. 
 
-Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor
-incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis
-nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
-fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-culpa qui officia deserunt mollit anim id est laborum.
+\section*{Potential Difficulties}
+At this point, the emulator is not fully operational, but it does work for some 
+instructions and progress has been made on the assembler section, so work has 
+been eased for later sections once the emulator is completed. Also, there has 
+been no discussion for the extension, partially due to increased individual 
+workloads due to having non-participating members. - Christopher
+\newline
+
+When I tried to implement the excution part, since members in my group strated 
+decode and execution part at the same time and we didn't discuss the structure 
+of our codes before, I wasn't very clear about the structure of my codes, so I 
+did part of the decode in execution part(eg. the decode\_data\_processing function) 
+which caused difficulties later when we tried to implement pipeline function. 
+Also when coding the function data\_processing\_instr, there are lots of 
+duplicated codes which need to be improved further. And to make the file 
+structure more elegant, the emulator.c file also needs to be separated into a 
+few header files and sub-files. - Claire(Siran) Shen
+\newline
+
+For the first week of the project all in the group except myself and Claire were 
+not present. This led to a very slow start in the project, but we decided to 
+carry on anyway, so me and Claire(Siran) worked on the emulator, where I worked 
+on the fetch and decode mainly whilst Claire mainly worked on the execute 
+aspect. After the first group meeting Christopher showed up and started 
+doing work on the assembler section which has been helpful. However the rest of
+the group has done nothing in the slightest to help. 
+
+Upon creation of the group I set up a whatsapp group chat so we could coordinate
+easily, which I feel has helped us three with the implementation. However,
+communication about how we will implement the emulator was not really talked
+about which led to large amounts of clashes in code and style when we tried to 
+merge them. I feel that now we are on the same page and this shows due to the 
+progress we have made in the past week with only 3 people. But overall, I feel 
+how we are working as a group of 3 now is close to optimal, only needing to add
+a bit more communication between us.
+
+Currently the Emulator is poorly structured since it is all in one file, this 
+is hopefully going to be changed soon, to make it easier for navigation of the 
+code. I feel this is very useful as a learning experience for the Assembler
+section and hence we won't write all the code in one file. We will also use the
+structure of how to decode the instructions in the assembler.
+
+I feel the utility functions in the assembler may be tricky and laborious to
+implement. However Christopher has already started implementing these to reduce
+the amount of time it will take to program these.
+
+-Samuel
+
 
 \end{document}
+
+

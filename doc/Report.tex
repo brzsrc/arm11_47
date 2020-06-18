@@ -1,21 +1,70 @@
-\documentclass[11pt]{article}
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
 
-\usepackage{fullpage}
+\title{ARM11 - Final Report}
+\author{Group 47 - \\
+Samuel Andresen, Siran Shen, Christopher Kuan, \\
+Jordan Emery, Sanidhya Singh}
+\date{June 2020}
 
 \begin{document}
 
-\title{Our Extension...}
-\author{TODO}
-
 \maketitle
 
-\section{Introduction}
+\section*{Assembler Structure}
+The assembler is split into c files, assemble.c and assembleutils.c: assemble.c simply reads in the arguments from the command line and then finds the source file specified and creates the destination file. Whilst assembleutils.c holds all the utility functions for the assembler and is where all the calculations take place.
 
-Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor
-incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis
-nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
-fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-culpa qui officia deserunt mollit anim id est laborum.
+The assembler does two passes: one to calculate the number of instructions, and another to tokenise and write the binary code to the destination file.
+
+In the second pass, each line is read and the mnemonic is identified, which determines which instruction set function the operands are passed to. Any stored values to be added at the end, the current address, and the number of instructions are also passed into the function, as they are needed for the single data transfer instruction set.
+
+For data processing instructions, the function uses a switch to determine the opCode based on the mnemonic, though the MOV and testing instructions are kept in separate selection structure due to having a different bit structure and assignment. 
+
+For multiply instructions, the function only reads if the mnemonic is MLA or not, since both MUL and MLA are directed to this function and all MUL bit assignments are present in MLA, so the function only needs to assign additional bits for MLA.
+
+For single data transfer instructions, the function takes the stored values, the number of instructions and the PC. If the offset fits in the allocated bits, then it is assigned to the result. If not, the value is stored in the stored values array to be continually passed until the end. The function also only checks for the LDR mnemonic, since it uses the same bit assignments as the STR mnemonic, with additional assignments not needed for the STR mnemonic.
+
+For branch instructions, the current address is passed into the function and the label is found by passing through the file again, and returning the difference between the current address and the label location. If the branch has to calculate a negative offset, then it is readjusted before assignment.
+
+For special instructions, the ANDEQ mnemonic returns 0, and the LSL mnemonic rearranges the operands before passing them to the data processing function with the MOV mnemonic and the lsl operand.
+
+Additional helper functions were created to find the mnemonic and calculate the operand2 field. These were used to streamline the assembler by reducing clutter needed to determine the mnemonic and pass the operands to the correct instruction set function, as well reduce repeated blocks of code for calculating the operand2 field, as it is used in several data processing instructions.
+
+A header file was used called macrosAndStructs which held all the macros and structs used in both the assembler and emulator. The macros were clearly labelled to allow for readability of the code and also to avoid 'magic numbers'. We decided that our assembler wouldn't use any structs, since the assembler would already be cluttered with selection statements.
+
+\section*{Extension}
+The extension consisted of implementing, into the assembler, additional instructions: SWI, BX, SWP, SWPB, BLEQ, BLNE, BLGE, BLLT, BLGT, BLLE, BL, and the Undefined instruction. The Undefined instruction is declared outside of the mnemonic group and is returned when an unknown mnemonic is passed into the assembler. The BL (branch with link) instruction set is given its own function to generate the binary code, where it retrieves the appropriate binary form from the Branch set, and sets the Link bit to 1. The SWI (software interrupt), BX (branch and exchange), SWP and SWPB (single data swap) mnemonics are put with the special instructions and are handled in that instruction set.
+
+\section*{Extension Difficulties}
+There a few ideas to also implement the emulator for the extra instructions, but due to time constraints and absent members, this could not be done and only the assembler could be implemented. The group had planned to implement the GPIO test cases, however we felt that additional instructions took precedence since it gave more depth to the assembler, instead of adding a function for a raspberry pi. 
+
+\section*{Testing}
+Most of the testing was done using the ruby test server that was provided, which allowed us to ensure that we were along the right path. However since ruby only shows you the incorrect output, gdb was also used to identify errors in the code that weren't as obvious at first glance so we could then see why the output is wrong. 
+The extension was tested by writing source code with the new instructions and checking if the binary code outputted in the matched the expected outcome from an ARM instruction set manual in the terminal.
+
+\section*{Group Reflection}
+Despite difficulties from working remotely, like time zones and inability to meet in person, as well as non-participating members increasing the workload of all other members, work and communication was still possible through a WhatsApp chat, and barely any overlapping work was done as members were responsible enough to inform others that they were attempting a portion of the work so others would not need to attempt it. Next time, however, perhaps we would look into a more involved way to keep each other informed on our work, or having more meetings to discuss the project as a whole, possibly using Microsoft Teams.
+
+As a group, we feel we picked up the slack that the other 2 group members left by not contributing. This was mainly done by committing to git commonly so other people could see what work someone has done. The group was not shy to criticise each other (constructively) which led to a better work ethic and faster progress, since people wouldn't only correct their mistake, they would also not repeat it which led to extremely fast learning of C and good programming etiquette.
+
+Although communication at times when implementing the emulator was scrappy, the group learnt this and quickly fixed it. As a group the main positive would definitely be how we managed to learn quickly from our mistakes since it allowed for an acceleration in the implementation of the project and also a much better group atmosphere.
+
+\section*{Individual Reflections}
+
+\subsection*{Samuel Andresen}
+Personally I'm very happy and proud of the work that this group has done, considering the push backs we had. As a JMC student I was worried that when the project first started I wouldn't get anywhere in the project since the workforce just didn't seem to be there for the project. However between the three of us I think we were very quick to adapt to problems, for example after the emulator we realised that we weren't communicating very well and by the end of the project I feel that the communication was close to perfect. On top of this I think my personal knowledge on how to use both git and C has greatly improved on this project.
+
+Throughout this project, I decided to dive straight in and try and get everything to instantly work instead of striving for cleaner more efficient code. Personally I feel it may have caused, myself to spend more time later on trying to make the code better, when I could have just done it earlier and not put a larger amount of time pressure on myself and the group.
+
+I'd personally say I was the primary contributor of the group and I really tried to help the rest when I could. I think this shows from my attendance to group meetings, creating the whatsapp group chat so people could communicate easily and my large amount of git commits to both mine and the master branch.
+
+What I would say, is at the start of the project I feel I was very individual and tried to do it myself which in retrospect was the incorrect mentality to go into a group project with. I think if time zones weren't an issue I'd say that group calls where we code together would have been a great idea, however due to the circumstances, I feel we made close to the best out of a bad situation.
+
+\subsection*{Siran Shen}
+I felt people in the group communicate and cooperate better in the assembler part. However, I only contributed to the branch instruction so I did less work compared to the emulator part. I felt the assembler part was actually harder for me to understand which made I participate less in this section. For example, I tried to help with the branch instruction at first but it turned out my way to implement this instruction just didn't make any sense at all. So in order to be a more helpful person next time in a project, I will try harder to improve my coding skill in the future.
+
+\subsection*{Christopher Kuan}
+I felt that, for the assembler, I was more useful than for the emulator. I think that I would prioritise learning more about how Git functioned, to make future projects easier to manage. I also think I should have started participating in the project a bit earlier, as it was a bit confusing coming in and trying to understand the code and find a way to contribute. I also had experience with video editing and LaTeX, so I knew that I could help in creating the video presentation and reports.
 
 \end{document}
