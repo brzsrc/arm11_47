@@ -2,10 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "assemble_utils.h"
-//return statements not included yet..
-//need way to calculate Operand2..
-//need to make way to read registers..
-//special instructions TODO..
+#include "macrosAndStructs.h"
 
 static const char *mnemonicsList[] = {
 	"add", "sub", "rsb", "and", "eor", "orr", "mov", "tst", "teq", "cmp", "mul",
@@ -14,14 +11,14 @@ static const char *mnemonicsList[] = {
 
 int findLabel(FILE *srcFile, char *label, int currentAddress) {
 	int i = 0;
-	char *buffer = calloc(50, sizeof(char));
+	char *buffer = calloc(MAX_LENGTH_OF_LINE, sizeof(char));
 	rewind(srcFile);
 	label[strlen(label) - 1] = '\0';
 	char *colon = ":\n";
 	strcat(label, colon);
-	while (fgets(buffer, 50, srcFile)) {
+	while (fgets(buffer, MAX_LENGTH_OF_LINE, srcFile)) {
 		if (strcmp(buffer, label) == 0) {
-			return i - currentAddress - 8;
+			return i - currentAddress - PC_OFFSET;
 		}
 		if (buffer[strlen(buffer) - 2] != ':') {
 		  i += 4;
@@ -32,8 +29,8 @@ int findLabel(FILE *srcFile, char *label, int currentAddress) {
 
 int getNoOfInstructions(FILE *srcFile) {
 	int result = 0;
-	char *buffer = calloc(50, sizeof(char));
-	while (fgets(buffer, 50, srcFile)) {
+	char *buffer = calloc(MAX_LENGTH_OF_LINE, sizeof(char));
+	while (fgets(buffer, MAX_LENGTH_OF_LINE, srcFile)) {
 		int len = strlen(buffer);
 		if (buffer[len - 2] != ':') {
 			result++;
@@ -46,10 +43,10 @@ void second_pass(FILE *srcFile, FILE *dstFile) {
 	int currentAddress = 0;
 	int noOfInstructions = getNoOfInstructions(srcFile);
 	rewind(srcFile);
-	char *buffer = calloc(50, sizeof(char));
-	int *storedValues = calloc(20, sizeof(char));
+	char *buffer = calloc(MAX_LENGTH_OF_LINE, sizeof(char));
+	int *storedValues = calloc(MAX_LENGTH_OF_LINE, sizeof(char));
 	memset(buffer, 0, sizeof(char) * sizeof(buffer));
-	while (fgets(buffer, 50, srcFile)) {
+	while (fgets(buffer, MAX_LENGTH_OF_LINE, srcFile)) {
 		int len = strlen(buffer);
 		if (buffer[len - 2] != ':' && *buffer != '\n') {
 		  int instruction = 0;
@@ -75,7 +72,6 @@ void setBitAtPos(int pos, int value, int *number) {
 }
 
 int generateBinary(char *buffer, int *storedValues, int currentAddress, int noOfInstructions, FILE *srcFile) {
-	//int len = strlen(buffer);
 	char *sep = " ,", *token = strtok(buffer, sep), operands[6][20];
 	memset(operands, 0, sizeof(operands));
 	int mnemonic = findMnemonic(token), noOperands = 0;
@@ -93,7 +89,7 @@ int generateBinary(char *buffer, int *storedValues, int currentAddress, int noOf
 		return assembleMultiply(mnemonic, operands);
 	}
 	if (mnemonic < BEQ) {
-		return assembleSIngleDataTransfer(mnemonic, operands, storedValues, noOfInstructions, currentAddress);
+		return assembleSingleDataTransfer(mnemonic, operands, storedValues, noOfInstructions, currentAddress);
 	}
 	if (mnemonic < LSLOP) {
 		return assembleBranch(mnemonic, operands, srcFile, currentAddress);
@@ -103,7 +99,7 @@ int generateBinary(char *buffer, int *storedValues, int currentAddress, int noOf
 
 int findMnemonic(char *p) {
     int i;
-    for (i = 0; i <= 22; i++) {
+    for (i = 0; i < NUM_OF_MNENMONICS; i++) {
         if (!strcmp(p, mnemonicsList[i])) {
             return i;
         }
@@ -118,15 +114,15 @@ int getOperand2(char operands[20]) {
 	} else {
 		result = atoi(operands + 1);
 	}
-	if (result < 256) {
+	if (result < MAX_LDR_USED_AS_MOV) {
 		return result;
 	} else {
-		int x = 16;
-		while(result > 255 || ((result & 3) == 0)) {
-			result = (result >> 2);
+		int x = MAX_NO_OF_ROTATIONS;
+		while(result > 0xFF || ((result & 3) == 0)) {
+			result = (result >> ONE_ROTATION);
 			x--;
 		}
-		result |= (x << 8);
+		result |= (x << ROTATE_BIT);
 		return result;
 	}
 }
@@ -139,8 +135,8 @@ int isImmediate(char operands[20]) {
 }
 
 int assembleDataProcessing(enum mnemonics mnemonic, char operands[6][20]) {
-	int result = 0, opCode, cond = 14; //14 = 1110
-	setBitAtPos(28, cond, &result);
+	int result = 0, opCode, cond = COND_AL; //14 = 1110
+	setBitAtPos(COND_BIT, cond, &result);
 	if (mnemonic >= ADD && mnemonic <= ORR) {
 		switch (mnemonic) {
 			case ADD:
@@ -165,27 +161,27 @@ int assembleDataProcessing(enum mnemonics mnemonic, char operands[6][20]) {
 				perror("Invalid mnemonic");
 		}
 		int rd = atoi(operands[0] + 1), rn = atoi(operands[1] + 1);
-		setBitAtPos(21, opCode, &result);
-		setBitAtPos(16, rn, &result);
-		setBitAtPos(12, rd, &result);
+		setBitAtPos(DATA_PROCESS_OPCODE_BIT, opCode, &result);
+		setBitAtPos(DATA_PROCESS_RN_BIT, rn, &result);
+		setBitAtPos(DATA_PROCESS_RD_BIT, rd, &result);
 		int operand2 = getOperand2(operands[2]);
 		int immediate = isImmediate(operands[2]);
-		setBitAtPos(25, immediate, &result);
+		setBitAtPos(DATA_PROCESS_I_BIT, immediate, &result);
 		setBitAtPos(0, operand2, &result);
 		return result;
 	}
 	if (mnemonic == MOV) {
 		int rd = atoi(operands[0] + 1);
 		opCode = 13; //1101
-		setBitAtPos(21, opCode, &result);
-		setBitAtPos(12, rd, &result);
+		setBitAtPos(DATA_PROCESS_OPCODE_BIT, opCode, &result);
+		setBitAtPos(DATA_PROCESS_RD_BIT, rd, &result);
 		int operand2 = getOperand2(operands[1]);
 		int leftShift = 0;
-		if (strcmp(operands[2], "lsl") == 0) {
+		if (!strcmp(operands[2], "lsl")) {
 			leftShift = getOperand2(operands[3]);
 		}
 		int immediate = isImmediate(operands[1]);
-		setBitAtPos(25, immediate, &result);
+		setBitAtPos(DATA_PROCESS_I_BIT, immediate, &result);
 		setBitAtPos(0, operand2, &result);
 		setBitAtPos(7, leftShift, &result);
 		return result;
@@ -206,42 +202,42 @@ int assembleDataProcessing(enum mnemonics mnemonic, char operands[6][20]) {
 	int rn = atoi(operands[0] + 1);
 	int operand2 = getOperand2(operands[1]);
 	int immediate = isImmediate(operands[1]);
-	setBitAtPos(25, immediate, &result);
+	setBitAtPos(DATA_PROCESS_I_BIT, immediate, &result);
 	setBitAtPos(0, operand2, &result);
-	setBitAtPos(20, 1, &result);
-	setBitAtPos(21, opCode, &result);
-	setBitAtPos(16, rn, &result);
+	setBitAtPos(DATA_PROCESS_S_BIT, 1, &result);
+	setBitAtPos(DATA_PROCESS_OPCODE_BIT, opCode, &result);
+	setBitAtPos(DATA_PROCESS_RN_BIT, rn, &result);
 	return result;
 }
 
 int assembleMultiply(enum mnemonics mnemonic, char operands[6][20]) {
-	int result = 0, cond = 14, mask = 9;
+	int result = 0, cond = COND_AL, mask = 9;
 	int rd = atoi(operands[0] + 1), rs = atoi(operands[2] + 1);
 	int rm = atoi(operands[1] + 1); //1110, 1001
-	setBitAtPos(28, cond, &result);
-	setBitAtPos(16, rd, &result);
-	setBitAtPos(8, rs, &result);
+	setBitAtPos(COND_BIT, cond, &result);
+	setBitAtPos(MUL_RD_BIT, rd, &result);
+	setBitAtPos(MUL_RS_BIT, rs, &result);
 	setBitAtPos(4, mask, &result);
 	setBitAtPos(0, rm, &result);
 	if (mnemonic == MLA) {
 		int rn = atoi(operands[3] + 1);
-		setBitAtPos(12, rn, &result);
-		setBitAtPos(21, 1, &result);
+		setBitAtPos(MUL_RN_BIT, rn, &result);
+		setBitAtPos(MUL_ACC_BIT, 1, &result);
 	}
 	return result;
 }
 
-int assembleSIngleDataTransfer(enum mnemonics mnemonic, char operands[6][20], int *storedValues, int noOfInstructions, int pc) {
-	int result = 0, cond = 14, offset; //1110
+int assembleSingleDataTransfer(enum mnemonics mnemonic, char operands[6][20], int *storedValues, int noOfInstructions, int pc) {
+	int result = 0, cond = COND_AL, offset; //1110
 	int rd = atoi(operands[0] + 1);
-	setBitAtPos(12, rd, &result);
-	setBitAtPos(28, cond, &result);
+	setBitAtPos(SINGLEDATA_RD_BIT, rd, &result);
+	setBitAtPos(COND_BIT, cond, &result);
 	if (mnemonic == LDR) {
 		if (operands[1][0] == '=') {
 			int operand2 = (int) strtol(operands[1] + 1, NULL, 0);
 			if (operand2 < (1 << 12)) {
-				setBitAtPos(25, 1, &result);
-				setBitAtPos(21, 13, &result);
+				setBitAtPos(DATA_PROCESS_I_BIT, 1, &result);
+				setBitAtPos(DATA_PROCESS_OPCODE_BIT, 13, &result);
 			  setBitAtPos(0, operand2, &result);
 				return result;
 			} else {
@@ -253,46 +249,46 @@ int assembleSIngleDataTransfer(enum mnemonics mnemonic, char operands[6][20], in
 				storedValues[i] = operand2;
 				offset = (noOfInstructions - (pc / 4) + i - 2) * 4 ;
 				setBitAtPos(0, offset, &result);
-				setBitAtPos(20, 1, &result);
-				setBitAtPos(24, 1, &result);
+				setBitAtPos(SINGLEDATA_LOAD_BIT, 1, &result);
+				setBitAtPos(SINGLEDATA_P_BIT, 1, &result);
 				setBitAtPos(26, 1, &result);
-				setBitAtPos(20, 1, &result);
-				setBitAtPos(23, 1, &result);
-				setBitAtPos(16, 15, &result);
+				setBitAtPos(SINGLEDATA_LOAD_BIT, 1, &result);
+				setBitAtPos(SINGLEDATA_UP_BIT, 1, &result);
+				setBitAtPos(SINGLEDATA_RN_BIT, 15, &result);
 				return result;
 			}
 		}
 	}
 		setBitAtPos(26, 1, &result);
 		if (mnemonic == LDR) {
-		  setBitAtPos(20, 1, &result);
+		  setBitAtPos(SINGLEDATA_LOAD_BIT, 1, &result);
 		}
 		int rn = atoi(operands[1] + 2);
-		setBitAtPos(16, rn, &result);
+		setBitAtPos(SINGLEDATA_RN_BIT, rn, &result);
 		if (operands[1][3] == ']' && !operands[2][0]) {
 			offset = 0;
-			setBitAtPos(24, 1, &result);
-			setBitAtPos(23, 1, &result);
+			setBitAtPos(SINGLEDATA_P_BIT, 1, &result);
+			setBitAtPos(SINGLEDATA_UP_BIT, 1, &result);
 		} else {
 			if (operands[2][0] == '#') {
-				setBitAtPos(24, 1, &result);
+				setBitAtPos(SINGLEDATA_P_BIT, 1, &result);
 				if (operands[2][2] == 'x') {
 					offset = (int) strtol(operands[2] + 1, NULL, 0); //Converts a hex string into an integer
-					setBitAtPos(23, 1, &result);
+					setBitAtPos(SINGLEDATA_UP_BIT, 1, &result);
 				} else if (operands[2][3] == 'x' && operands[2][1] == '-') {
 					offset = (int) strtol(operands[2] + 2, NULL, 0);
 				} else {
 					offset = atoi(operands[2] + 1);
-					setBitAtPos(23, 1, &result);
+					setBitAtPos(SINGLEDATA_UP_BIT, 1, &result);
 				}
 				setBitAtPos(0, offset, &result);
 			} else {
 				offset = atoi(operands[2] + 1);
 				if (operands[2][strlen(operands[2]) - 2] == ']') {
-					setBitAtPos(24, 1, &result);
+					setBitAtPos(SINGLEDATA_P_BIT, 1, &result);
 				}
-				setBitAtPos(23, 1, &result);
-				setBitAtPos(25, 1, &result);
+				setBitAtPos(SINGLEDATA_UP_BIT, 1, &result);
+				setBitAtPos(SINGLEDATA_I_BIT, 1, &result);
 				setBitAtPos(0, offset, &result);
 			}
 		}
@@ -300,7 +296,7 @@ int assembleSIngleDataTransfer(enum mnemonics mnemonic, char operands[6][20], in
 }
 
 int assembleBranch(enum mnemonics mnemonic, char operands[6][20], FILE *srcFile, int currentAddress) {
-	int result = 0, cond = 14, mask = 5, offset; //1110, 101
+	int result = 0, cond = COND_AL, mask = 5, offset; //1110, 101
 	if (mnemonic >= BEQ && mnemonic <= B) {
 		switch (mnemonic) {
 			case BEQ:
@@ -328,13 +324,13 @@ int assembleBranch(enum mnemonics mnemonic, char operands[6][20], FILE *srcFile,
 				perror("Invalid mnemonic");
 		}
 	}
-	setBitAtPos(28, cond, &result);
+	setBitAtPos(COND_BIT, cond, &result);
 	setBitAtPos(25, mask, &result);
 	int temp = ftell(srcFile);
 	offset = findLabel(srcFile, operands[0], currentAddress);
 	if (offset < 0) {
 		offset = offset >> 2;
-		offset &= 0x00ffffff;
+		offset &= 0x00ffffff; //Converts offset into signed 24 bit integer
 	}
   setBitAtPos(0, offset, &result);
 	fseek(srcFile, temp, SEEK_SET);

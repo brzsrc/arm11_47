@@ -6,7 +6,7 @@ void readFile(char *filename, unsigned int *memory) {
     //Creates a pointer with allocated space of 64KB
     int i = 0;
     FILE *ptr = fopen(filename, "rb"); //Opens file "filename" to be read as a binary file
-    assert(ptr != NULL); //Checks the file has been read
+    assert(ptr); //Checks the file has been read
 
     while (!feof(ptr)) {
         fread(memory + i, 4, 1, ptr);

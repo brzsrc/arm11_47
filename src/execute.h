@@ -2,22 +2,7 @@
 #define EXECUTE_H
 
 #include "decode.h"
-
-#define NREGS 17
-#define PC 15
-#define STACK_SIZE 16384
-
-typedef struct decoded_data_processing {
-    type type;
-    unsigned int rn, rd, operand2, s_bit;
-    unsigned int carry_out, val_reg_last12bits;
-} decoded_dp;
-
-typedef struct arm_state {
-    unsigned int regs[NREGS];
-    unsigned int *memory; // *objectcode
-    int n, z, c, v;
-} armstate;
+#include "macrosAndStructs.h"
 
 void armstate_init(armstate *state); //Initialises the values of the arm state
 

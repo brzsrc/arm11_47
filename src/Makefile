@@ -6,13 +6,13 @@ ASSEMBLEFILES = assemble.c assemble_utils.c
 
 all: emulate assemble
 
+assemble: assemble.o assemble_utils.o
+		$(CC) $(CFLAGS) $(ASSEMBLEFILES) -o assemble
+
 emulate: emulate.o fetch.o decode.o execute.o instrType.o
 	$(CC) $(CFLAGS) $(EMULATEFILES) -o emulate
 
-assemble: assemble.o assemble_utils.o
-	$(CC) $(CFLAGS) $(ASSEMBLEFILES) -o assemble
-
 clean:
 	rm -f $(wildcard *.o)
-	rm -f assemble
 	rm -f emulate
+	rm -f assemble

@@ -5,8 +5,7 @@
 #include "decode.h"
 #include "fetch.h"
 #include "execute.h"
-#include <math.h>
-#include <time.h>
+#include "macrosAndStructs.h"
 
 void bigToLittleEndian(armstate *state) {
 	int temp;
@@ -14,14 +13,11 @@ void bigToLittleEndian(armstate *state) {
 		temp = state->memory[j];
 		state->memory[j] = (temp & 0xff) << 24 | (temp & 0xff00) << 8 |
 		(temp & 0xff0000) >> 8 |	(temp & 0xff000000) >> 24;
+		//Takes each value in the memory and flips it into little endian form
 	}
 }
 
-void printResult(armstate *state) {
-	//clock_t start, end;
-	//double timeTaken;
-	//start = clock();
-	#define INRANGE(x) (x < 0xc4653601) && (x >= 0x80000000)
+void printResult(armstate *state) { //Prints the result to stdout
   bigToLittleEndian(state);
   printf("Registers:\n");
   for (int i = 0; i < 13; i++) {
@@ -47,9 +43,6 @@ void printResult(armstate *state) {
       printf("0x%08x: 0x%08x\n", i * 4, state->memory[i]);
 		}
 	}
-	//end = clock();
-	//timeTaken = ((double)(end - start)) / CLOCKS_PER_SEC;
-	//printf("Time Taken for printing results: %f\n", timeTaken);
 }
 
 void startCycle(armstate *state) {
@@ -59,24 +52,24 @@ void startCycle(armstate *state) {
     bool finished = false;
     unsigned int *objectcode = state->memory;
 
-  while(!finished) {
+  while(!finished) { //Start of the arm Pipeline
       if (*pc == 0) {
-          fetched = fetch(objectcode, *pc/4);
-          *pc += 4;
-      } else if (*pc == 4) {
+          fetched = fetch(objectcode, *pc/WORDLENGTH);
+          *pc += WORDLENGTH;
+      } else if (*pc == WORDLENGTH) {
           decode(fetched, decodedInstr);
-          fetched = fetch(objectcode, *pc/4);
-          *pc += 4;
+          fetched = fetch(objectcode, *pc/WORDLENGTH);
+          *pc += WORDLENGTH;
       } else {
         execute(decodedInstr, state);
         if (decodedInstr->type == branch && do_next_instruction(decodedInstr,
 					state)) {
-          fetched = fetch(objectcode, *pc/4);
-          *pc += 4;
+          fetched = fetch(objectcode, *pc/WORDLENGTH);
+          *pc += WORDLENGTH;
         }
         decode(fetched, decodedInstr);
-        fetched = fetch(objectcode, *pc/4);
-        *pc += 4;
+        fetched = fetch(objectcode, *pc/WORDLENGTH);
+        *pc += WORDLENGTH;
         if (decodedInstr->condition == 0 && decodedInstr->bit0to25 == 0 &&
 					decodedInstr->type == and){
           finished = true;
@@ -89,26 +82,19 @@ void startCycle(armstate *state) {
     printResult(state);
 
     free(decodedInstr);
-} //pipeline
+}
 
 int main(int argc, char **argv) {
-	//clock_t start, end;
-	//double timeTaken;
-	//start = clock();
-    //unsigned int registers[NREGS];
     armstate *state = (armstate *) calloc(1, sizeof(armstate));
 
-    armstate_init(state); // &??????????
+    armstate_init(state);
 
     assert(argc == 2);
     readFile(argv[1], state->memory);
 
-    startCycle(state); //???????
+    startCycle(state);
 
     free(state->memory);
     free(state);
-		//end = clock();
-		//timeTaken = ((double)(end - start)) / CLOCKS_PER_SEC;
-		//printf("Time Taken: %f\n", timeTaken);
     return EXIT_SUCCESS;
 }

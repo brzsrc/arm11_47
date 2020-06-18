@@ -1,9 +1,10 @@
 #include "execute.h"
+#include "macrosAndStructs.h"
 #include "instrType.h"
 #include <stdlib.h>
 
 void armstate_init(armstate *state) {
-    /* zero out all arm state */
+    // zero out all arm state
     state->n = 0;
     state->z = 0;
     state->c = 0;
@@ -17,33 +18,30 @@ void armstate_init(armstate *state) {
 // next_instruction_condition_check
 int do_next_instruction(decoded *decodedInstr, armstate *state){
     unsigned int cond = decodedInstr->condition;
-    int run_command;
-    if ((cond == 0) && (state->z == 1 )) { // cond in decimal?
-        run_command = 1;
-    } else if ((cond == 1) && (state->z == 0)) {
-        run_command = 1;
-    } else if ((cond == 10) && (state->n == state->v)) {
-        run_command = 1;
-    } else if ((cond == 11) && (state->n != state->v)) {
-        run_command = 1;
-    } else if (cond == 12 && state->z == 0 && state->n == state->v) {
-        run_command = 1;
-    } else if (cond == 13 && (state->z == 1 || state->n != state->v)) {
-        run_command = 1;
-    } else if (cond == 14){
-        run_command = 1;
-    } else {
-        run_command = 0;
-    }
-    return run_command;
+    
+    if ((cond == COND_EQ) && state->z) return 1;
+
+    if ((cond == COND_NE) && !state->z) return 1;
+
+    if ((cond == COND_GE) && (state->n == state->v)) return 1;
+
+    if ((cond == COND_LT) && (state->n != state->v)) return 1;
+
+    if (cond == COND_GT && !state->z && state->n == state->v) return 1;
+
+    if (cond == COND_LE && (state->z || state->n != state->v)) return 1;
+
+    if (cond == COND_AL) return 1;
+
+    return 0;
 }
 
 //Operand2 is a register
 void val_reg_last12bits(decoded *decodedInstr, unsigned int *operand2, armstate *state) {
     unsigned int iw = decodedInstr -> bit0to25;
     unsigned int val_in_rm = state -> regs[iw & 0xF]; // state -> regs[iw & 0xF] == Rm
-    unsigned int sh_op = (iw >>  4) & 1;
-    unsigned int sh_type = (iw >> 5) & 3;
+    unsigned int sh_op = (iw >> SHIFT_OP) & 1;
+    unsigned int sh_type = (iw >> SHIFT_TYPE) & 3;
     unsigned int amount;
     if(sh_op == 0){
         amount = (iw >> 7) & 31;
@@ -58,7 +56,7 @@ void val_reg_last12bits(decoded *decodedInstr, unsigned int *operand2, armstate 
             break;
         case 2 : *operand2 = (signed) val_in_rm >> amount;
             break;
-        case 3 : *operand2 = val_in_rm >> amount || ((val_in_rm & amount) << (32 - amount)); // ??????????
+        case 3 : *operand2 = val_in_rm >> amount || ((val_in_rm & amount) << (32 - amount));
             break;
         default :
             exit(1);
@@ -71,7 +69,7 @@ unsigned int shift_carry_out(decoded_dp *decodedDp, decoded *decodedInstr, armst
     unsigned int sh_type, sh_op;
     unsigned int iw = decodedInstr -> bit0to25;
 
-    immediate = (iw >> 25) & 1;
+    immediate = (iw >> SINGLEDATA_I_BIT) & 1;
     if(immediate == 1){
         amount = (iw >> 8) & 0xF;
         val = (iw & 0xFF);
@@ -101,10 +99,10 @@ void decode_data_processing(decoded *decodedInstr, decoded_dp *decodedDp, armsta
     unsigned int immediate, iw, operand2;
     iw = decodedInstr -> bit0to25;
     decodedDp -> type = decodedInstr -> type;
-    decodedDp -> rd = (iw >> 12) & 0xF;
-    decodedDp -> rn = (iw >> 16) & 0xF;
-    decodedDp -> s_bit = (iw >> 20) & 1;
-    immediate = (iw >> 25) & 1;
+    decodedDp -> rd = (iw >> DATA_PROCESS_RD_BIT) & 0xF;
+    decodedDp -> rn = (iw >> DATA_PROCESS_RN_BIT) & 0xF;
+    decodedDp -> s_bit = (iw >> DATA_PROCESS_S_BIT) & 1;
+    immediate = (iw >> DATA_PROCESS_I_BIT) & 1;
 
 
     if(immediate == 1){

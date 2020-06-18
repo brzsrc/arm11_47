@@ -1,23 +1,4 @@
-#include "decode.h"
-
-void decode(unsigned int instruction, decoded *decodedInstr) {
-    unsigned int bit26and27 = (instruction >> 26) & 3;
-    decodedInstr->condition = (instruction >> 28) & 0xf;
-    decodedInstr->bit0to25 = (instruction) & 0x3ffffff;
-
-    if (bit26and27 == 0) {
-        if (((instruction >> 22) & 0xf) == 0 && ((instruction >> 4) & 0xf) == 9) {
-        	decodedInstr->type = multiply;
-        } else {
-        	findOpcode(decodedInstr, instruction);
-        }
-    } else if (bit26and27 == 1) {
-        decodedInstr->type = singledata;
-    } else if (bit26and27 == 2) {
-        decodedInstr->type = branch;
-    }
-
-}
+#include "macrosAndStructs.h"
 
 void findOpcode(decoded *decodedInstr, unsigned int instruction) {
     unsigned int opcode = (instruction >> 21) & 0xf;
@@ -43,4 +24,23 @@ void findOpcode(decoded *decodedInstr, unsigned int instruction) {
     } else if (opcode == 13) {
         decodedInstr->type = mov;
     }
+}
+
+void decode(unsigned int instruction, decoded *decodedInstr) {
+    unsigned int bit26and27 = (instruction >> 26) & 3;
+    decodedInstr->condition = (instruction >> COND_BIT) & 0xf;
+    decodedInstr->bit0to25 = (instruction) & 0x3ffffff;
+
+    if (bit26and27 == 0) {
+        if (((instruction >> 22) & 0xf) == 0 && ((instruction >> 4) & 0xf) == 9) {
+        	decodedInstr->type = multiply;
+        } else {
+        	findOpcode(decodedInstr, instruction);
+        }
+    } else if (bit26and27 == 1) {
+        decodedInstr->type = singledata;
+    } else if (bit26and27 == 2) {
+        decodedInstr->type = branch;
+    }
+
 }

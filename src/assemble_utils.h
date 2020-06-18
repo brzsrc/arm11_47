@@ -20,7 +20,7 @@ int assembleDataProcessing(enum mnemonics mnemonic, char operands[6][20]);
 
 int assembleMultiply(enum mnemonics mnemonic, char operands[6][20]);
 
-int assembleSIngleDataTransfer(enum mnemonics mnemonic, char operands[6][20], int *storedValues, int noOfInstructions, int pc);
+int assembleSingleDataTransfer(enum mnemonics mnemonic, char operands[6][20], int *storedValues, int noOfInstructions, int pc);
 
 int assembleBranch(enum mnemonics mnemonic, char operands[6][20], FILE *srcFile, int currentAddress);
 
