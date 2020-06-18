@@ -10,8 +10,8 @@ int main(int argc, char **argv) {
     perror("Must only provide two arguments!");
     exit(EXIT_FAILURE);
   }
-  FILE *fileSrc = fopen(argv[1], "r");
-  FILE *fileDest = fopen(argv[2], "w");
+  FILE *fileSrc = fopen(argv[1], "r"); //reads file
+  FILE *fileDest = fopen(argv[2], "w"); //writes file
 
   second_pass(fileSrc, fileDest);
 
