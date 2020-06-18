@@ -12,7 +12,6 @@ enum mnemonics {
 
 };
 
-
 int findLabel(FILE *srcFile, char *label, int currentAddress);
 
 int getNoOfInstructions(FILE *srcFile);

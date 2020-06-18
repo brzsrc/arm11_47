@@ -116,7 +116,7 @@ int findMnemonic(char *p) {
     }
     return -1; //instruction not found
 }
-
+ 
 int getOperand2(char operands[20]) {
 	int result = 0;
 	if (operands[2] == 'x') {
